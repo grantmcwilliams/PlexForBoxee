@@ -1,0 +1,324 @@
+<?xml version="1.0"?>
+<window type="window" id="14001">
+	<defaultcontrol>200</defaultcontrol>
+	<allowoverlay>no</allowoverlay>
+	<onload lang="Python">loadSecondaryItems()</onload>
+	
+	<controls>		
+		<!-- BACKGROUND =============================================================-->
+		
+		<!-- page background -->
+		<control type="image">
+			<width>1280</width>
+			<height>720</height>
+			<texture>com.xmcnuggetx.plexee/defaultbackground.png</texture>
+		</control>
+		
+		<control type="image">
+			<posy>0</posy>
+			<posx>30</posx>
+			<width>300</width>
+			<height>720</height>
+			<colordiffuse>99000000</colordiffuse>
+			<texture>com.xmcnuggetx.plexee/shapes/square.png</texture>
+		</control>
+		
+		<!-- title background -->
+        <control type="image">
+			<width>1280</width>
+			<height>100</height>
+			<colordiffuse>FF242424</colordiffuse>
+			<texture>com.xmcnuggetx.plexee/shapes/square.png</texture>
+		</control>
+		
+		<control type="image">
+			<posy>98</posy>
+			<width>1280</width>
+			<height>2</height>
+			<colordiffuse>FFFFFFFF</colordiffuse>
+			<texture>com.xmcnuggetx.plexee/shapes/square.png</texture>
+		</control>
+		
+		<!-- SECONDARY ==============================================================-->
+		<control type="list" id="200">
+			<posx>40</posx>
+			<posy>130</posy>
+			<width>280</width>
+			<height>560</height>
+			
+			<onright>300</onright>
+			<onup>50</onup>
+			
+			<content type="action">
+				<onclick lang="Python">handleItem(mc.GetFocusedItem(14001, 200))</onclick>
+			</content>
+			
+			<itemlayout height="40">
+				<control type="label">
+					<posy>0</posy>
+					<posx>10</posx>
+					<height>35</height>
+					<width>280</width>
+					
+					<font>font22</font>
+					<textcolor>66FFFFFF</textcolor>
+					
+					<aligny>center</aligny>
+					<label>$INFO[ListItem.Property(custom:title)]</label>
+				</control>
+				
+			</itemlayout>
+			
+			<focusedlayout height="40">
+				<control type="image">
+					<posx>0</posx>
+					<posy>0</posy>
+					<width>280</width>
+					<height>40</height>
+					<colordiffuse>66FFFFFF</colordiffuse>
+					<texture border="10">com.xmcnuggetx.plexee/shapes/rounded_outline.png</texture>
+				</control>
+				
+				<control type="image">
+					<posx>0</posx>
+					<posy>0</posy>
+					<width>280</width>
+					<height>40</height>
+					<visible>Control.HasFocus(200)</visible>
+					<texture border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texture>
+				</control>
+				
+				<control type="label">
+					<posy>0</posy>
+					<posx>10</posx>
+					<height>35</height>
+					<width>280</width>
+					
+					<font>font22</font>
+					<textcolor>66FFFFFF</textcolor>
+					
+					<aligny>center</aligny>
+					<label>$INFO[ListItem.Property(custom:title)]</label>
+				</control>
+				
+				<control type="label">
+					<posy>0</posy>
+					<posx>10</posx>
+					<height>35</height>
+					<width>280</width>
+					
+					<font>font22</font>
+					<textcolor>FFFFFFFF</textcolor>
+					
+					<aligny>center</aligny>
+					<visible>Control.HasFocus(200)</visible>
+					<label>$INFO[ListItem.Property(custom:title)]</label>
+				</control>
+			</focusedlayout>
+		</control>
+		
+		<control type="image">
+			<posx>140</posx>
+			<posy>110</posy>
+			<width>40</width>
+			<height>15</height>
+			<visible>Container(200).HasPrevious</visible>
+			<texture>com.xmcnuggetx.plexee/secondary_page.png</texture>
+		</control>
+		
+		<control type="image">
+			<posx>140</posx>
+			<posy>690</posy>
+			<width>40</width>
+			<height>15</height>
+			<visible>Container(200).HasNext</visible>
+			<texture flipy="true">com.xmcnuggetx.plexee/secondary_page.png</texture>
+		</control>
+		
+		<!--=========================================================================-->
+		<!-- THUMB LIST =============================================================-->
+		<!--=========================================================================-->
+		
+		<control type="panel" id="300">
+			<posy>110</posy>
+			<posx>350</posx>
+			<width>880</width>
+			<height>600</height>
+			
+			<preloaditems>1</preloaditems>
+			<pagecontrol>2000</pagecontrol>
+			
+			<onleft>200</onleft>
+			<onup>51</onup>
+			
+			<content type="action">
+				<onclick lang="Python">handleItem(mc.GetFocusedItem(14001, 300))</onclick>
+			</content>
+			
+			<itemlayout width="175" height="300">
+				<control type="image">
+					<posx>10</posx>
+					<posy>5</posy>
+					<width>155</width>
+					<height>228</height>
+					<aspectratio>scale</aspectratio>
+					<texture fallback="com.xmcnuggetx.plexee/default_icons/case.png">$INFO[ListItem.Property(image0)]</texture>
+				</control>
+				
+				<control type="image">
+					<posx>132</posx>
+					<posy>200</posy>
+					<width>32</width>
+					<height>32</height>
+					<visible>!StringCompare(ListItem.Property(custom:leafCount), ListItem.Property(custom:viewedLeafCount))</visible>
+					<texture>com.xmcnuggetx.plexee/status/unwatched.png</texture>
+				</control>
+				
+				<control type="label">
+					<posx>90</posx>
+					<posy>235</posy>
+					<width>160</width>
+					<height>60</height>
+					
+					<wrapmultiline>true</wrapmultiline>
+					<font>font22</font>
+					<textcolor>66FFFFFF</textcolor>
+					
+					<align>center</align>
+					<label>$INFO[ListItem.Property(custom:title)]</label>
+				</control>
+			</itemlayout>
+			
+			<focusedlayout width="175" height="300">
+				<control type="image">
+					<posx>6</posx>
+					<posy>1</posy>
+					<width>163</width>
+					<height>236</height>
+					<visible>Control.HasFocus(300)</visible>
+					<texture border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texture>
+				</control>
+				
+				<control type="image">
+					<posx>10</posx>
+					<posy>5</posy>
+					<width>155</width>
+					<height>228</height>
+					<aspectratio>scale</aspectratio>
+					<texture fallback="com.xmcnuggetx.plexee/default_icons/case.png">$INFO[ListItem.Property(image0)]</texture>
+				</control>
+				
+				<control type="image">
+					<posx>132</posx>
+					<posy>200</posy>
+					<width>32</width>
+					<height>32</height>
+					<visible>!StringCompare(ListItem.Property(custom:leafCount), ListItem.Property(custom:viewedLeafCount))</visible>
+					<texture>com.xmcnuggetx.plexee/status/unwatched.png</texture>
+				</control>
+
+				
+				<control type="label">
+					<posx>90</posx>
+					<posy>235</posy>
+					<width>160</width>
+					<height>60</height>
+					
+					<wrapmultiline>true</wrapmultiline>
+					<font>font22</font>
+					<textcolor>FFFFFFFF</textcolor>
+					
+					<align>center</align>
+					<label>$INFO[ListItem.Property(custom:title)]</label>
+				</control>
+			</focusedlayout>
+		</control>
+		
+		<!-- SCROLLBAR ==============================================================-->
+		<control type="scrollbar" id="2000">
+			<posx>1248</posx>
+			<posy>120</posy>
+			<width>12</width>
+			<height>580</height>
+			 
+			<texturesliderbackground border="6">com.xmcnuggetx.plexee/scrollbar/background.png</texturesliderbackground>
+			<texturesliderbar border="6">com.xmcnuggetx.plexee/scrollbar/nub.png</texturesliderbar>
+			<texturesliderbarfocus border="6">com.xmcnuggetx.plexee/scrollbar/nub.png</texturesliderbarfocus>
+			 
+			<orientation>vertical</orientation>
+			<showonepage>true</showonepage>
+		</control>
+		
+		<!-- TITLE ==================================================================-->
+		<control type="list" id="100">
+			<posy>10</posy>
+			<posx>30</posx>
+			<width>1150</width>
+			<height>80</height>
+			
+			<orientation>vertical</orientation>
+			<hitrect x="0" y="0" w="0" h="0" />
+			
+			<itemlayout height="100">
+				<control type="image">
+					<width>1</width>
+					<height>1</height>
+				</control>
+			</itemlayout>
+			
+			<focusedlayout>
+				<control type="label">
+					<height>80</height>
+					<width>1150</width>
+					
+					<font>font38</font>
+					<textcolor>FFFFFFFF</textcolor>
+					
+					<label>[B]$INFO[ListItem.Property(custom:title1)][/B] - $INFO[ListItem.Property(custom:plexeeview)]</label>
+				</control>
+				
+				<control type="label">
+					<posy>45</posy>
+					<height>40</height>
+					<width>800</width>
+					
+					<font>font24</font>
+					<textcolor>FF2BB6EA</textcolor>
+					
+					<label>[B]$INFO[ListItem.Property(custom:title2)][/B]</label>
+				</control>
+				
+				<control type="label">
+					<posy>45</posy>
+					<posx>1075</posx>
+					<height>50</height>
+					<width>200</width>
+					
+					<font>font24</font>
+					<textcolor>FF2BB6EA</textcolor>
+					<align>right</align>
+					
+					<label>$INFO[ListItem.Property(custom:size),[COLOR FFFFFFFF]Items: [/COLOR],]</label>
+				</control>
+			</focusedlayout>
+		</control>
+
+		
+		<!-- TOP MENU ============================================================== -->
+		
+		<control type="button" id="50">
+			<posx>1122</posx>
+			<posy>18</posy>
+			<width>64</width>
+			<height>64</height>
+			
+			<ondown>300</ondown>
+			<onleft>200</onleft>
+			
+			<texturenofocus>com.xmcnuggetx.plexee/buttons/home.png</texturenofocus>
+			<texturefocus>com.xmcnuggetx.plexee/buttons/home_focus.png</texturefocus>
+			
+			<onclick lang="python">mc.ActivateWindow(14000)</onclick>
+		</control>
+	</controls>
+</window>

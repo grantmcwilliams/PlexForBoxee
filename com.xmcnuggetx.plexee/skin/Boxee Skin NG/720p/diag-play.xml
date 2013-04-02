@@ -1,0 +1,125 @@
+<?xml version="1.0"?>
+<window type="dialog" id="15001">
+	<defaultcontrol always="true">301</defaultcontrol>
+	<allowoverlay>no</allowoverlay>
+	
+	<controls>
+		<!-- LIST ===================================================================-->
+		<control type="list" id="100">
+			<width>1</width>
+			<height>1</height>
+			
+			<orientation>vertical</orientation>
+			<hitrect x="0" y="0" w="0" h="0" />
+			
+			<itemlayout height="1">
+				<control type="image">
+					<width>1</width>
+					<height>1</height>
+				</control>
+			</itemlayout>
+			
+			<focusedlayout height="1">
+				<control type="image">
+					<width>1</width>
+					<height>1</height>
+				</control>
+			</focusedlayout>
+		</control>
+		
+		<!-- BACKGROUND =============================================================-->
+		
+		<!-- dim the lower window -->
+		<control type="image">
+			<width>1280</width>
+			<height>720</height>
+			<colordiffuse>CC000000</colordiffuse>
+			<texture>com.xmcnuggetx.plexee/shapes/square.png</texture>
+		</control>
+		
+		
+		<control type="group">
+			<posx>150</posx>
+			<posy>70</posy>
+			<width>880</width>
+			<height>580</height>
+			
+			
+			<!-- play window background -->
+			<control type="image">
+				<width>980</width>
+				<height>580</height>
+				
+				<colordiffuse>FF0E1418</colordiffuse>
+				<texture border="10">com.xmcnuggetx.plexee/shapes/rounded.png</texture>
+			</control>
+			
+			<!-- play window outline -->
+			<control type="image">
+				<width>980</width>
+				<height>580</height>
+				
+				<texture border="10">com.xmcnuggetx.plexee/shapes/rounded_outline.png</texture>
+			</control>
+			
+			<control type="group">
+				<posx>15</posx>
+				<posy>15</posy>
+				<height>550</height>
+				<width>950</width>
+			
+				<!-- THUMB ==================================================================-->
+				
+				<control type="image">
+					<width>450</width>
+					<height>550</height>
+					<aspectratio>keep</aspectratio>
+					<texture fallback="com.xmcnuggetx.plexee/default_icons/case.png">$INFO[Container(100).ListItem.Property(image0)]</texture>
+				</control>
+				
+				<!-- DESCRIPTION ============================================================-->
+				
+				<control type="group">
+					<posx>460</posx>
+					<posy>100</posy>
+					
+					<control type="image">
+						<width>490</width>
+						<height>185</height>
+						
+						<texture border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texture>
+					</control>
+					
+					<control type="textbox" id="300">
+						<posx>5</posx>
+						<posy>5</posy>
+						<width>460</width>
+						<height>175</height>
+						<font>font22</font>
+						<textcolor>FFEEEEEE</textcolor>
+						<pagecontrol>301</pagecontrol>
+						<info>Container(100).ListItem.Property(custom:summary)</info>
+					</control>
+
+					<control type="scrollbar" id="301">
+						<posx>470</posx>
+						<posy>5</posy>
+						<width>12</width>
+						<height>175</height>
+						 
+						<texturesliderbackground border="6">com.xmcnuggetx.plexee/scrollbar/background.png</texturesliderbackground>
+						<texturesliderbar border="6">com.xmcnuggetx.plexee/scrollbar/nub.png</texturesliderbar>
+						<texturesliderbarfocus border="6">com.xmcnuggetx.plexee/scrollbar/nub.png</texturesliderbarfocus>
+						 
+						<orientation>vertical</orientation>
+						<showonepage>true</showonepage>
+					</control>
+				</control>
+			</control>
+			
+			<!-- BUTTONS ================================================================-->
+			
+			
+		</control>
+	</controls>
+</window>
