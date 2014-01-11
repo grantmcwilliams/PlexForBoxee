@@ -78,13 +78,18 @@ def handleItem(listItem, fromHome = False):
 			showWindowInformation(window, windowInformation)
 	
 	# Play video
-	elif itemType =="Video":
+	elif itemType == "Video":
 		machineIdentifier = listItem.GetProperty("machineidentifier")
 		manager.playVideoUrl(machineIdentifier, url)
 		#TEMP DISABLE PLAY WINDOW AND JUST PLAY VIDEO
 		#windowInformation = manager.getListItems(machineIdentifier, url)
 		#mc.ActivateWindow(PLAY_DIALOG_ID)
 		#mc.GetWindow(PLAY_DIALOG_ID).GetList(PLAY_DIALOG_LIST_ID).SetItems(windowInformation.childListItems)
+	
+	elif itemType == "Track":
+		machineIdentifier = listItem.GetProperty("machineidentifier")
+		manager.playMusicUrl(machineIdentifier, url)
+	
 	# Unknown item
 	else:
 		mc.ShowDialogNotification("Unknown itemType: %s" % itemType)
@@ -120,10 +125,10 @@ def loadSecondaryItems():
 	global secondaryListItems
 	
 	if secondaryListItems:
-		mc.ShowDialogNotification("has secondary")
+		#mc.ShowDialogNotification("has secondary")
 		mc.GetActiveWindow().GetList(200).SetItems(secondaryListItems)
 	else:
-		mc.ShowDialogNotification("no secondary")
+		#mc.ShowDialogNotification("no secondary")
 		mc.GetActiveWidnow().GetList(200).SetItems(mc.ListItems())
 	
 def activateWindow(id):

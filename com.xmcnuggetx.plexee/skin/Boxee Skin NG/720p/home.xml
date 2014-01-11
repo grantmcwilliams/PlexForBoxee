@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <window type="window" id="14000">
-	<defaultcontrol>1000</defaultcontrol>
+	<defaultcontrol>50</defaultcontrol>
 	<allowoverlay>no</allowoverlay>
 	<onload lang="Python">secondaryListItems = None</onload>
 	
