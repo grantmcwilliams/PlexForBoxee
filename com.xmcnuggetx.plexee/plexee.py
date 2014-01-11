@@ -106,6 +106,10 @@ class PlexeeManager(object):
 		server = self.getServer(machineIdentifier)
 		if server: server.playVideoUrl(fullUrl)
 
+	def playMusicUrl(self, machineIdentifier, fullUrl):
+		server = self.getServer(machineIdentifier)
+		if server: server.playMusicUrl(fullUrl)
+
 	def getServer(self, machineIdentifier):
 		"""
 		Return server from machine identifier
@@ -338,6 +342,27 @@ class PlexServer(object):
 
 			for part in videoNode.findall("Media/Part"):
 				li = mc.ListItem(mc.ListItem.MEDIA_UNKNOWN)
+				li.SetTitle(title)
+				li.SetLabel(title)
+				li.SetPath(self.getUrl(self.getRootUrl(), part.attrib.get('key')))
+				playlist.Add(li)
+
+			playlist.Play(0)
+		else:
+			return None
+
+	def playMusicUrl(self, fullUrl):
+		trackUrl = self.getUrl(self.getRootUrl(), fullUrl)
+		data = mc.Http().Get(trackUrl)
+		if data:
+			tree = ElementTree.fromstring(data)
+			trackNode = tree[0]
+			title = trackNode.attrib.get("title", "Plex Track")
+			playlist = mc.PlayList(mc.PlayList.PLAYLIST_MUSIC)
+			playlist.Clear()
+
+			for part in trackNode.findall("Media/Part"):
+				li = mc.ListItem(mc.ListItem.MEDIA_AUDIO_MUSIC)
 				li.SetTitle(title)
 				li.SetLabel(title)
 				li.SetPath(self.getUrl(self.getRootUrl(), part.attrib.get('key')))

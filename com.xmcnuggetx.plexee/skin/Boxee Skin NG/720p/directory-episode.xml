@@ -50,7 +50,7 @@
 			<onup>50</onup>
 			
 			<content type="action">
-				<onclick lang="Python">handleItem(mc.GetFocusedItem(14001, 200))</onclick>
+				<onclick lang="Python">handleItem(mc.GetFocusedItem(14002, 200))</onclick>
 			</content>
 			
 			<itemlayout height="40">
@@ -136,12 +136,13 @@
 		</control>
 
 		<!--=========================================================================-->
-		<!-- SIMPLE LIST ============================================================-->
+		<!-- THUMB LIST =============================================================-->
 		<!--=========================================================================-->
-		<control type="list" id="300">
+		
+		<control type="panel" id="300">
 			<posy>110</posy>
 			<posx>350</posx>
-			<width>500</width>
+			<width>880</width>
 			<height>600</height>
 			
 			<preloaditems>1</preloaditems>
@@ -151,63 +152,84 @@
 			<onup>51</onup>
 			
 			<content type="action">
-				<onclick lang="Python">handleItem(mc.GetFocusedItem(14001, 301))</onclick>
+				<onclick lang="Python">handleItem(mc.GetFocusedItem(14002, 300))</onclick>
 			</content>
 			
-			<itemlayout height="50">
+			<itemlayout width="175" height="300">
+				<control type="image">
+					<posx>10</posx>
+					<posy>5</posy>
+					<width>155</width>
+					<height>228</height>
+					<aspectratio>scale</aspectratio>
+					<texture fallback="com.xmcnuggetx.plexee/default_icons/case.png">$INFO[ListItem.Property(image0)]</texture>
+				</control>
+				
+				<control type="image">
+					<posx>132</posx>
+					<posy>200</posy>
+					<width>32</width>
+					<height>32</height>
+					<visible>!StringCompare(ListItem.Property(custom:leafCount), ListItem.Property(custom:viewedLeafCount))</visible>
+					<texture>com.xmcnuggetx.plexee/status/unwatched.png</texture>
+				</control>
+				
 				<control type="label">
-					<posx>20</posx>
-					<width>460</width>
-					<height>48</height>
+					<posx>90</posx>
+					<posy>235</posy>
+					<width>160</width>
+					<height>60</height>
 					
-					<font>font32</font>
+					<wrapmultiline>true</wrapmultiline>
+					<font>font22</font>
 					<textcolor>66FFFFFF</textcolor>
 					
-					<aligny>center</aligny>
-					<label>$INFO[ListItem.Property(custom:title)]</label>
+					<align>center</align>
+					<label>E$INFO[ListItem.Property(index)] - $INFO[ListItem.Property(custom:title)]</label>
 				</control>
 			</itemlayout>
 			
-			<focusedlayout height="50">
+			<focusedlayout width="175" height="300">
 				<control type="image">
-					<width>500</width>
-					<height>50</height>
-					
-					<colordiffuse>66FFFFFF</colordiffuse>
-					<texture border="10">com.xmcnuggetx.plexee/shapes/rounded_outline.png</texture>
-				</control>
-				
-				<control type="image">
-					<width>500</width>
-					<height>50</height>
-					
-					<visible>Control.HasFocus(301)</visible>
+					<posx>6</posx>
+					<posy>1</posy>
+					<width>163</width>
+					<height>236</height>
+					<visible>Control.HasFocus(300)</visible>
 					<texture border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texture>
 				</control>
 				
-				<control type="label">
-					<posx>20</posx>
-					<width>460</width>
-					<height>48</height>
-					
-					<font>font32</font>
-					<textcolor>66FFFFFF</textcolor>
-					
-					<aligny>center</aligny>
-					<label>$INFO[ListItem.Property(custom:title)]</label>
+				<control type="image">
+					<posx>10</posx>
+					<posy>5</posy>
+					<width>155</width>
+					<height>228</height>
+					<aspectratio>scale</aspectratio>
+					<texture fallback="com.xmcnuggetx.plexee/default_icons/case.png">$INFO[ListItem.Property(image0)]</texture>
 				</control>
 				
+				<control type="image">
+					<posx>132</posx>
+					<posy>200</posy>
+					<width>32</width>
+					<height>32</height>
+					<visible>!StringCompare(ListItem.Property(custom:leafCount), ListItem.Property(custom:viewedLeafCount))</visible>
+					<texture>com.xmcnuggetx.plexee/status/unwatched.png</texture>
+				</control>
+
+				
 				<control type="label">
-					<posx>20</posx>
-					<width>460</width>
-					<height>48</height>
+					<posx>90</posx>
+					<posy>235</posy>
+					<width>160</width>
+					<height>60</height>
 					
-					<font>font32</font>
+					<wrapmultiline>true</wrapmultiline>
+					<font>font22</font>
 					<textcolor>FFFFFFFF</textcolor>
 					
-					<visible>Control.HasFocus(301)</visible>
-					<aligny>center</aligny>
-					<label>$INFO[ListItem.Property(custom:title)]</label>
+					<align>center</align>
+					<label>E$INFO[ListItem.Property(index)] - $INFO[ListItem.Property(custom:title)]</label>
 				</control>
 			</focusedlayout>
 		</control>

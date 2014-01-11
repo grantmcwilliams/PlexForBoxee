@@ -43,7 +43,9 @@ def savesettings():
 	config.SetValue("myplexusername", myPlexUsername.GetText())
 	config.SetValue("myplexpassword", myPlexPassword.GetText())
 	
+	initPlexee()
 	loadHome()
+
 	xbmc.executebuiltin("Dialog.Close(15000)")
 
 loadsettings();
