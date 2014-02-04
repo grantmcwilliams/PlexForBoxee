@@ -1,4 +1,4 @@
-Plexee - A Plex Client for Boxee
+/data/.boxeePlexee - A Plex Client for Boxee
 ================================
 Originally created by xmcnuggetx
 
@@ -14,7 +14,7 @@ Once the app is in better shape it will be posted to a boxee app repository.
 Manual Install Instructions
 ---------------------------
 *Option 1*
-* If you have root access to your Boxee - copy the plexee app into .boxee/UserData/apps
+* If you have root access to your Boxee - copy the plexee app into /data/.boxee/UserData/apps
 
 *Option 2*
 * If you have a closed device - then you'll need to get a developers certificate for your device.
