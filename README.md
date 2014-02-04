@@ -1,4 +1,4 @@
-/data/.boxeePlexee - A Plex Client for Boxee
+plexforboxee - A Plex Client for Boxee
 ================================
 Originally created by xmcnuggetx
 
