@@ -13,10 +13,20 @@ Once the app is in better shape it will be posted to a boxee app repository.
 
 Manual Install Instructions
 ---------------------------
+
 *Option 1*
-* If you have root access to your Boxee (via Boxee+hacks - http://boxeeplus.com) - copy the plexee app into /data/.boxee/UserData/apps
+* Navigate to Apps -> Repositories on your Boxee
+* Click the + button on the top right to add the PlexforBoxee repository - http://grantmcwilliams.com/plexforboxee
+* Browse the PlexforBoxee repository and add the Plexee App
+* Manual configure Plexee using the Plexee app
+** Enter the IP address of your Plex Media Server
+** Enter the port number of your Plex Media Server (default is 32400)
+
 
 *Option 2*
+* If you have root access to your Boxee (via Boxee+hacks - http://boxeeplus.com) - copy the plexee app into /data/.boxee/UserData/apps
+
+*Option 3*
 * If you have a closed device - then you'll need to get a developers certificate for your device.
 * Login to your boxee account at http://www.boxee.tv
 * Go to the Developer section and follow the process to get a certificate
@@ -25,6 +35,3 @@ Manual Install Instructions
 * Copy the plexee folder into BoxeeApps as well
 * Attach the usb stick/drive to the Boxee device - the plexee application should now be available under Favourites in Apps.
 
-*Future Option (doesn't currently work)* 
-* Add the custom plexforboxee repository
-* Install the app
