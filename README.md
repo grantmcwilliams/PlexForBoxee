@@ -1,6 +1,7 @@
 plexforboxee - A Plex Client for Boxee
 ================================
 Originally created by xmcnuggetx
+
 Currently being maintainged by Grant McWilliams
 
 ---
