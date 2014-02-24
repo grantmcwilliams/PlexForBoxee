@@ -24,3 +24,7 @@ Manual Install Instructions
 * Copy the certificate into a folder name BoxeeApps on the root of a usb stick/drive
 * Copy the plexee folder into BoxeeApps as well
 * Attach the usb stick/drive to the Boxee device - the plexee application should now be available under Favourites in Apps.
+
+*Future Option (doesn't currently work)* 
+* Add the custom plexforboxee repository
+* Install the app
