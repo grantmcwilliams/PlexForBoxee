@@ -1,15 +1,20 @@
 plexforboxee - A Plex Client for Boxee
 ================================
 Originally created by xmcnuggetx
-
-Made available on GitHub by Grant McWilliams - thanks!
+Currently being maintainged by Grant McWilliams
 
 ---
 
-The code is currently quite buggy - but the core functionality works.
+The code is currently buggy - but the core functionality works. As of February 23, 2014 the app is installable
+from the plexforboxee custom app repository. 
 
-The only option is a manual install at present as the app is in development.
-Once the app is in better shape it will be posted to a boxee app repository.
+TODO
+* Fix file numbering bug
+* Fix exit from video bug that crashes the app
+* Add auto discover of Plex Media Servers
+* Fix bugs in photo and music playing areas
+
+
 
 Manual Install Instructions
 ---------------------------
@@ -30,8 +35,7 @@ Manual Install Instructions
 * If you have a closed device - then you'll need to get a developers certificate for your device.
 * Login to your boxee account at http://www.boxee.tv
 * Go to the Developer section and follow the process to get a certificate
-
 * Copy the certificate into a folder name BoxeeApps on the root of a usb stick/drive
 * Copy the plexee folder into BoxeeApps as well
-* Attach the usb stick/drive to the Boxee device - the plexee application should now be available under Favourites in Apps.
+* Attach the usb stick/drive to the Boxee device - the plexee application should now be available under Favourites in Apps
 
