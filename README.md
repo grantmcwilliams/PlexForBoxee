@@ -19,8 +19,8 @@ Manual Install Instructions
 * Click the + button on the top right to add the PlexforBoxee repository - http://grantmcwilliams.com/plexforboxee
 * Browse the PlexforBoxee repository and add the Plexee App
 * Manual configure Plexee using the Plexee app
-** Enter the IP address of your Plex Media Server
-** Enter the port number of your Plex Media Server (default is 32400)
+* Enter the IP address of your Plex Media Server
+* Enter the port number of your Plex Media Server (default is 32400)
 
 
 *Option 2*
