@@ -1,6 +1,6 @@
 <apps>
    <app>
-      <id>com.grantmcwilliams.plexee</id>
+      <id>plexee.plexforboxee</id>
       <name>Plexee</name>
       <version>1.2</version>
       <description>Plex Media Server client application for Boxee</description>

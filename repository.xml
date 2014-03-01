@@ -1,7 +1,7 @@
 <repository>
    <id>com.grantmcwilliams</id>
    <url>http://www.grantmcwilliams.com/plexforboxee</url>
-   <name>PlexforBoxee</name>
+   <name>grantmcwilliams</name>
    <thumb>http://www.grantmcwilliams.com/plexforboxee/thumb.png</thumb>
-   <description>Plex for Boxee Repository</description>
+   <description>Grant McWilliams Boxee Repository</description>
 </repository>
