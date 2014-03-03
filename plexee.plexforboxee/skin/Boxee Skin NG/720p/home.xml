@@ -28,7 +28,7 @@
 			
 			<pagecontrol>2000</pagecontrol>
 			
-			<!-- MY LIBRAY -->
+			<!-- MY LIBRARY -->
 			<control type="group" id="100">
 				<width>1280</width>
 				<height>250</height>
@@ -48,7 +48,7 @@
 					<posx>10</posx>
 					<font>font24</font>
 					<textcolor>FFFFFFFF</textcolor>
-					<label>[B]MY LIBRAY[/B]</label>
+					<label>[B]MY LIBRARY[/B]</label>
 				</control>
 				
 				<control type="list" id="110">
