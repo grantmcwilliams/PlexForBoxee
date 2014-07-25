@@ -185,7 +185,7 @@
 					<textcolor>66FFFFFF</textcolor>
 					
 					<align>center</align>
-					<label>E$INFO[ListItem.Property(index)] - $INFO[ListItem.Property(custom:title)]</label>
+					<label>E$INFO[ListItem.Property(custom:index)] - $INFO[ListItem.Property(custom:title)]</label>
 				</control>
 			</itemlayout>
 			
@@ -229,7 +229,7 @@
 					<textcolor>FFFFFFFF</textcolor>
 					
 					<align>center</align>
-					<label>E$INFO[ListItem.Property(index)] - $INFO[ListItem.Property(custom:title)]</label>
+					<label>E$INFO[ListItem.Property(custom:index)] - $INFO[ListItem.Property(custom:title)]</label>
 				</control>
 			</focusedlayout>
 		</control>
