@@ -14,14 +14,20 @@ manualClientPort = settingwindow.GetEdit(202)
 myPlex = settingwindow.GetToggleButton(300)
 myPlexUsername = settingwindow.GetEdit(301)
 myPlexPassword = settingwindow.GetEdit(302)
+
+def close():
+	xbmc.executebuiltin("Dialog.Close(15000)")
 	
 def loadsettings():
 	if config.GetValue("usediscover"): discoverClients.SetSelected(True)
 	
 	if config.GetValue("usemanual"): manualClient.SetSelected(True)
 	manualClientHost.SetText(config.GetValue("manualhost"))
+
+	#default manual port
+	if not config.GetValue("manualport"): config.SetValue("manualport", "32400")
 	manualClientPort.SetText(config.GetValue("manualport"))
-	
+
 	if config.GetValue("usemyplex"): myPlex.SetSelected(True)
 	myPlexUsername.SetText(config.GetValue("myplexusername"))
 	myPlexPassword.SetText(config.GetValue("myplexpassword"))
@@ -32,8 +38,13 @@ def savesettings():
 	else: config.Reset("usediscover")
 	
 	# manual clients
-	if manualClient.IsSelected(): config.SetValue("usemanual", "True")
-	else: config.Reset("usemanual")
+	if manualClient.IsSelected():
+		config.SetValue("usemanual", "True")
+		if not manualClientHost.GetText() or not manualClientPort.GetText():
+			mc.ShowDialogNotification("You need to specify a host and port for a manual server");
+			return;
+	else:
+		config.Reset("usemanual")
 	config.SetValue("manualhost", manualClientHost.GetText())
 	config.SetValue("manualport", manualClientPort.GetText())
 	
@@ -43,10 +54,25 @@ def savesettings():
 	config.SetValue("myplexusername", myPlexUsername.GetText())
 	config.SetValue("myplexpassword", myPlexPassword.GetText())
 	
-	initPlexee()
-	loadHome()
+	mc.ShowDialogNotification("Saved settings. Trying to connect...")
+	try:
+		mc.ShowDialogWait()
+		try:
+			initPlexee()
+			if not manager.myServers:
+				mc.ShowDialogNotification("Could not connect to any Plex Server")
+				return
+				
+			loadHome()
+		except:
+			mc.ShowDialogNotification("An error occurred while connecting...")
+			return
+	finally:
+		mc.HideDialogWait()
 
-	xbmc.executebuiltin("Dialog.Close(15000)")
+	close()
+		
+		
 
 loadsettings();
 
@@ -116,7 +142,7 @@ loadsettings();
 				<posx>20</posx>
 				<posy>70</posy>
 				<width>560</width>
-				<height>400</height>
+				<height>450</height>
 				<orientation>vertical</orientation>
 				<usecontrolcoords>true</usecontrolcoords>
 				<itemgap>5</itemgap>
@@ -128,7 +154,7 @@ loadsettings();
 					<width>560</width>
 					<height>42</height>
 					
-					<label>[B]Discover Clients [TODO][/B]</label>
+					<label>[B]Auto Discover Clients[/B]</label>
 					<font>font24</font>
 					<align>left</align>
 					<textoffsetx>45</textoffsetx>
@@ -164,7 +190,7 @@ loadsettings();
 					<width>560</width>
 					<height>42</height>
 					
-					<label>Host</label>
+					<label>Host IP</label>
 					<font>font24</font>
 					<aligny>center</aligny>
 					
@@ -267,6 +293,24 @@ loadsettings();
 					<onclick lang="python">savesettings()</onclick>
 				</control>
 				
+				<control type="button" id="403">
+					<posx>460</posx>
+					<width>100</width>
+					<height>42</height>
+					
+					<font>font22</font>
+					<align>center</align>
+					<aligny>center</aligny>
+					<label>Cancel</label>
+					
+					<texturefocus border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texturefocus>
+					<texturenofocus border="10">com.xmcnuggetx.plexee/shapes/rounded_white_20.png</texturenofocus>
+					
+					<textcolor>FFCCCCCC</textcolor>
+					<focusedcolor>FFFFFFFF</focusedcolor>
+					
+					<onclick lang="python">close()</onclick>
+				</control>
 			</control>
 			
 		</control>
