@@ -1,18 +1,32 @@
 import mc
 import plexee
+from plexgdm import PlexGDM
 import util
 import urllib
+import time
 
 def initPlexee():
 	manager.clearServers()
-
-	#todo find servers
-
+	
+	#try auto discovery first if set
+	if config.GetValue("usediscover"):
+		mc.ShowDialogNotification("Auto-discovering Plex Servers...")
+		try:
+			mc.ShowDialogWait()
+			serverList = PlexGDM().getServers();
+			if serverList:
+				for serverKey in serverList:
+					manager.addMyServer(serverList[serverKey]['ip'], serverList[serverKey]['port'])
+			else:
+				mc.ShowDialogNotification("Failed to find or connect to a Plex Server");
+		finally:
+			mc.HideDialogWait()
+	
 	#add manual server
 	if config.GetValue("usemanual"):
 		host = config.GetValue("manualhost")
 		port = config.GetValue("manualport")
-		if host and port: manager.addMyServer(host, port)
+		manager.addMyServer(host, port)
 
 	#todo add myPlex
 	manager.clearMyPlex()
@@ -155,8 +169,14 @@ if ( __name__ == "__main__" ):
 	app = mc.GetApp()
 	config = app.GetLocalConfig()
 
+	#default to auto discovery on first launch
+	if not config.GetValue("usemanual") and not config.GetValue("usediscover"):
+		config.SetValue("usediscover", "1")
+	
 	#startup
-	mc.ShowDialogWait()
-	initPlexee()
-	loadHome()
-	mc.HideDialogWait()
+	try:
+		mc.ShowDialogWait()
+		initPlexee()
+		loadHome()
+	finally:
+		mc.HideDialogWait()

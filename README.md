@@ -7,12 +7,9 @@ Originally created by Mike McMullin (xmcnuggetx)  and currently being developed 
 The code is currently buggy - but the core functionality (browsing videos and streaming) works. As of February 23, 2014 the app is installable from the plexforboxee custom app repository outlined below. 
 
 TODO
-* Fix file numbering bug
 * Fix exit from video bug that crashes the app
-* Add auto discover of Plex Media Servers
 * Add integration with myplex service
 * Fix bugs in photo and music playing areas
-
 
 
 Manual Install Instructions
