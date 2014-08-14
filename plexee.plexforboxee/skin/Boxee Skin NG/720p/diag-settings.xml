@@ -19,23 +19,23 @@ def close():
 	xbmc.executebuiltin("Dialog.Close(15000)")
 	
 def loadsettings():
-	if config.GetValue("usediscover"): discoverClients.SetSelected(True)
+	#if config.GetValue("usediscover"): discoverClients.SetSelected(True)
 	
-	if config.GetValue("usemanual"): manualClient.SetSelected(True)
+	#if config.GetValue("usemanual"): manualClient.SetSelected(True)
 	manualClientHost.SetText(config.GetValue("manualhost"))
 
 	#default manual port
 	if not config.GetValue("manualport"): config.SetValue("manualport", "32400")
 	manualClientPort.SetText(config.GetValue("manualport"))
 
-	if config.GetValue("usemyplex"): myPlex.SetSelected(True)
-	myPlexUsername.SetText(config.GetValue("myplexusername"))
-	myPlexPassword.SetText(config.GetValue("myplexpassword"))
+	#if config.GetValue("usemyplex"): myPlex.SetSelected(True)
+	#myPlexUsername.SetText(config.GetValue("myplexusername"))
+	#myPlexPassword.SetText(config.GetValue("myplexpassword"))
 
 def savesettings():
 	# discover clients
-	if discoverClients.IsSelected(): config.SetValue("usediscover", "True")
-	else: config.Reset("usediscover")
+	#if discoverClients.IsSelected(): config.SetValue("usediscover", "True")
+	#else: config.Reset("usediscover")
 	
 	# manual clients
 	if manualClient.IsSelected():
@@ -49,12 +49,12 @@ def savesettings():
 	config.SetValue("manualport", manualClientPort.GetText())
 	
 	# my plex
-	if myPlex.IsSelected(): config.SetValue("usemyplex", "True")
-	else: config.Reset("usemyplex")
-	config.SetValue("myplexusername", myPlexUsername.GetText())
-	config.SetValue("myplexpassword", myPlexPassword.GetText())
+	#if myPlex.IsSelected(): config.SetValue("usemyplex", "True")
+	#else: config.Reset("usemyplex")
+	#config.SetValue("myplexusername", myPlexUsername.GetText())
+	#config.SetValue("myplexpassword", myPlexPassword.GetText())
 	
-	mc.ShowDialogNotification("Saved settings. Trying to connect...")
+	#mc.ShowDialogNotification("Saved settings. Trying to connect...")
 	try:
 		mc.ShowDialogWait()
 		try:
@@ -153,14 +153,14 @@ loadsettings();
 				<control type="togglebutton" id="100">
 					<width>560</width>
 					<height>42</height>
-					
+				
 					<label>[B]Auto Discover Clients[/B]</label>
 					<font>font24</font>
 					<align>left</align>
 					<textoffsetx>45</textoffsetx>
 					<textcolor>FFFFFFFF</textcolor>
 					<focusedcolor>FFFFFFFF</focusedcolor>
-					
+				
 					<texturenofocus border="40,5,5,5">com.xmcnuggetx.plexee/buttons/toggle_no_focus.png</texturenofocus>
 					<texturefocus border="40,5,5,5">com.xmcnuggetx.plexee/buttons/toggle_focus.png</texturefocus>
 					<alttexturenofocus border="40,5,5,5">com.xmcnuggetx.plexee/buttons/toggle_alt_no_focus.png</alttexturenofocus>
@@ -221,58 +221,58 @@ loadsettings();
 					<texturenofocus>-</texturenofocus>
 				</control>
 				
-				<!-- MyPlex Clients -->
-				<control type="togglebutton" id="300">
-					<width>560</width>
-					<height>42</height>
+				#<!-- MyPlex Clients -->
+				#<control type="togglebutton" id="300">
+				#	<width>560</width>
+				#	<height>42</height>
 					
-					<label>MyPlex</label>
-					<font>font24</font>
-					<align>left</align>
-					<textoffsetx>45</textoffsetx>
-					<textcolor>FFFFFFFF</textcolor>
-					<focusedcolor>FFFFFFFF</focusedcolor>
+				#	<label>MyPlex</label>
+				#	<font>font24</font>
+				#	<align>left</align>
+				#	<textoffsetx>45</textoffsetx>
+				#	<textcolor>FFFFFFFF</textcolor>
+				#	<focusedcolor>FFFFFFFF</focusedcolor>
 					
-					<texturenofocus border="40,5,5,5">com.xmcnuggetx.plexee/buttons/toggle_no_focus.png</texturenofocus>
-					<texturefocus border="40,5,5,5">com.xmcnuggetx.plexee/buttons/toggle_focus.png</texturefocus>
-					<alttexturenofocus border="40,5,5,5">com.xmcnuggetx.plexee/buttons/toggle_alt_no_focus.png</alttexturenofocus>
-					<alttexturefocus border="40,5,5,5">com.xmcnuggetx.plexee/buttons/toggle_alt_focus.png</alttexturefocus>
-				</control>
+				#	<texturenofocus border="40,5,5,5">com.xmcnuggetx.plexee/buttons/toggle_no_focus.png</texturenofocus>
+				#	<texturefocus border="40,5,5,5">com.xmcnuggetx.plexee/buttons/toggle_focus.png</texturefocus>
+				#	<alttexturenofocus border="40,5,5,5">com.xmcnuggetx.plexee/buttons/toggle_alt_no_focus.png</alttexturenofocus>
+				#	<alttexturefocus border="40,5,5,5">com.xmcnuggetx.plexee/buttons/toggle_alt_focus.png</alttexturefocus>
+				#</control>
 				
-				<!-- MyPlex - Username -->
-				<control type="edit" id="301">
-					<width>560</width>
-					<height>42</height>
+				#<!-- MyPlex - Username -->
+				#<control type="edit" id="301">
+				#	<width>560</width>
+				#	<height>42</height>
 					
-					<label>Username</label>
-					<font>font24</font>
-					<aligny>center</aligny>
+				#	<label>Username</label>
+				#	<font>font24</font>
+				#	<aligny>center</aligny>
 					
-					<textcolor>FFFFFFFF</textcolor>
-					<focusedcolor>FFFFFFFF</focusedcolor>
-					<textoffsetx>45</textoffsetx>
+				#	<textcolor>FFFFFFFF</textcolor>
+				#	<focusedcolor>FFFFFFFF</focusedcolor>
+				#	<textoffsetx>45</textoffsetx>
 					
-					<texturefocus border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texturefocus>
-					<texturenofocus>-</texturenofocus>
-				</control>
+				#	<texturefocus border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texturefocus>
+				#	<texturenofocus>-</texturenofocus>
+				#</control>
 				
-				<!-- MyPlex - Password -->
-				<control type="edit" id="302">
-					<width>560</width>
-					<height>42</height>
+				#<!-- MyPlex - Password -->
+				#<control type="edit" id="302">
+				#	<width>560</width>
+				#	<height>42</height>
 					
-					<label>Password</label>
-					<font>font24</font>
-					<aligny>center</aligny>
-					<password>True</password>
+				#	<label>Password</label>
+				#	<font>font24</font>
+				#	<aligny>center</aligny>
+				#	<password>True</password>
 					
-					<textcolor>FFFFFFFF</textcolor>
-					<focusedcolor>FFFFFFFF</focusedcolor>
-					<textoffsetx>45</textoffsetx>
+				#	<textcolor>FFFFFFFF</textcolor>
+				#	<focusedcolor>FFFFFFFF</focusedcolor>
+				#	<textoffsetx>45</textoffsetx>
 					
-					<texturefocus border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texturefocus>
-					<texturenofocus border="10">-</texturenofocus>
-				</control>
+				#	<texturefocus border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texturefocus>
+				#	<texturenofocus border="10">-</texturenofocus>
+				#</control>
 				
 				<control type="button" id="402">
 					<posx>460</posx>
