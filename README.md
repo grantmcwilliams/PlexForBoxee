@@ -10,8 +10,8 @@ TODO
 * Fix exit from video bug that crashes the app
 * Add integration with myplex service
 * Fix bugs in photo and music playing areas
-* Remove Auto discover and MyPlex from Settings dialog until they work
-* Change settings dialog so that you can't select MyPlex AND Manual AND Auto discover
+* Remove MyPlex from Settings dialog until it works
+* Change settings dialog so that you can't select MyPlex AND Manual AND Auto discover at the same time.
 
 
 Manual Install Instructions
