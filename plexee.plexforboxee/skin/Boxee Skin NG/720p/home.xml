@@ -222,6 +222,200 @@
 				</control>
 			</control>
 			
+			<!-- RECENTLY ADDED -->
+			<control type="group" id="400">
+				<width>1280</width>
+				<height>250</height>
+				<defaultcontrol>410</defaultcontrol>
+				
+				<visible>IntegerGreaterThan(Container(410).NumItems,0)</visible>
+				
+				<control type="image">
+					<width>1280</width>
+					<height>250</height>
+					<colordiffuse>112BB6EA</colordiffuse>
+					<texture>com.xmcnuggetx.plexee/shapes/square.png</texture>
+					<visible>Control.HasFocus(410)</visible>
+				</control>
+				
+				<control type="label">
+					<posx>10</posx>
+					<font>font24</font>
+					<textcolor>FFFFFFFF</textcolor>
+					<label>[B]RECENTLY ADDED[/B]</label>
+				</control>
+				
+				<control type="list" id="410">
+					<posx>10</posx>
+					<posy>34</posy>
+					<height>211</height>
+					<width>1225</width>
+					<orientation>horizontal</orientation>
+					<itemgap>5</itemgap>
+					
+					<onup>200</onup>
+					<ondown>500</ondown>
+					
+					<content type="action">
+						<onclick lang="Python">handleItem(mc.GetFocusedItem(14000, 410), True)</onclick>
+					</content>
+					
+					<itemlayout width="175">
+						<control type="image">
+							<posx>15</posx>
+							<posy>5</posy>
+							<width>145</width>
+							<height>145</height>
+							<texture fallback="com.xmcnuggetx.plexee/default_icons/square.png">$INFO[ListItem.Property(image0)]</texture>
+						</control>
+						
+						<control type="label">
+							<posx>90</posx>
+							<posy>154</posy>
+							<width>160</width>
+							<height>60</height>
+							
+							<wrapmultiline>true</wrapmultiline>
+							<font>font22</font>
+							<textcolor>66FFFFFF</textcolor>
+							
+							<align>center</align>
+							<label>$INFO[ListItem.Property(custom:title)]</label>
+						</control>
+					</itemlayout>
+					
+					<focusedlayout width="175">
+						<control type="image">
+							<posx>10</posx>
+							<posy>0</posy>
+							<width>155</width>
+							<height>155</height>
+							<visible>Control.HasFocus(410)</visible>
+							<texture border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texture>
+						</control>
+						
+						<control type="image">
+							<posx>15</posx>
+							<posy>5</posy>
+							<width>145</width>
+							<height>145</height>
+							<texture fallback="com.xmcnuggetx.plexee/default_icons/square.png">$INFO[ListItem.Property(image0)]</texture>
+						</control>
+						
+						<control type="label">
+							<posx>90</posx>
+							<posy>154</posy>
+							<width>160</width>
+							<height>60</height>
+							
+							<wrapmultiline>true</wrapmultiline>
+							<font>font22</font>
+							<textcolor>FFFFFFFF</textcolor>
+							
+							<align>center</align>
+							<label>$INFO[ListItem.Property(custom:title)]</label>
+						</control>
+					</focusedlayout>
+				</control>
+			</control>
+
+			<!-- ON DECK -->
+			<control type="group" id="500">
+				<width>1280</width>
+				<height>250</height>
+				<defaultcontrol>510</defaultcontrol>
+				
+				<visible>IntegerGreaterThan(Container(510).NumItems,0)</visible>
+				
+				<control type="image">
+					<width>1280</width>
+					<height>250</height>
+					<colordiffuse>112BB6EA</colordiffuse>
+					<texture>com.xmcnuggetx.plexee/shapes/square.png</texture>
+					<visible>Control.HasFocus(510)</visible>
+				</control>
+				
+				<control type="label">
+					<posx>10</posx>
+					<font>font24</font>
+					<textcolor>FFFFFFFF</textcolor>
+					<label>[B]ON DECK[/B]</label>
+				</control>
+				
+				<control type="list" id="510">
+					<posx>10</posx>
+					<posy>34</posy>
+					<height>211</height>
+					<width>1225</width>
+					<orientation>horizontal</orientation>
+					<itemgap>5</itemgap>
+					
+					<onup>400</onup>
+					<ondown>300</ondown>
+					
+					<content type="action">
+						<onclick lang="Python">handleItem(mc.GetFocusedItem(14000, 510), True)</onclick>
+					</content>
+					
+					<itemlayout width="175">
+						<control type="image">
+							<posx>15</posx>
+							<posy>5</posy>
+							<width>145</width>
+							<height>145</height>
+							<texture fallback="com.xmcnuggetx.plexee/default_icons/square.png">$INFO[ListItem.Property(image0)]</texture>
+						</control>
+						
+						<control type="label">
+							<posx>90</posx>
+							<posy>154</posy>
+							<width>160</width>
+							<height>60</height>
+							
+							<wrapmultiline>true</wrapmultiline>
+							<font>font22</font>
+							<textcolor>66FFFFFF</textcolor>
+							
+							<align>center</align>
+							<label>$INFO[ListItem.Property(custom:title)]</label>
+						</control>
+					</itemlayout>
+					
+					<focusedlayout width="175">
+						<control type="image">
+							<posx>10</posx>
+							<posy>0</posy>
+							<width>155</width>
+							<height>155</height>
+							<visible>Control.HasFocus(510)</visible>
+							<texture border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texture>
+						</control>
+						
+						<control type="image">
+							<posx>15</posx>
+							<posy>5</posy>
+							<width>145</width>
+							<height>145</height>
+							<texture fallback="com.xmcnuggetx.plexee/default_icons/square.png">$INFO[ListItem.Property(image0)]</texture>
+						</control>
+						
+						<control type="label">
+							<posx>90</posx>
+							<posy>154</posy>
+							<width>160</width>
+							<height>60</height>
+							
+							<wrapmultiline>true</wrapmultiline>
+							<font>font22</font>
+							<textcolor>FFFFFFFF</textcolor>
+							
+							<align>center</align>
+							<label>$INFO[ListItem.Property(custom:title)]</label>
+						</control>
+					</focusedlayout>
+				</control>
+			</control>
+
 			<!-- CHANNELS -->
 			<control type="group" id="300">
 				<width>1280</width>
@@ -319,102 +513,6 @@
 				</control>
 			</control>
 			
-			<!-- RECENTLY ADDED -->
-			<control type="group" id="400">
-				<width>1280</width>
-				<height>250</height>
-				<defaultcontrol>410</defaultcontrol>
-				
-				<visible>IntegerGreaterThan(Container(410).NumItems,0)</visible>
-				
-				<control type="image">
-					<width>1280</width>
-					<height>250</height>
-					<colordiffuse>112BB6EA</colordiffuse>
-					<texture>com.xmcnuggetx.plexee/shapes/square.png</texture>
-					<visible>Control.HasFocus(410)</visible>
-				</control>
-				
-				<control type="label">
-					<posx>10</posx>
-					<font>font24</font>
-					<textcolor>FFFFFFFF</textcolor>
-					<label>[B]RECENTLY ADDED[/B]</label>
-				</control>
-				
-				<control type="list" id="410">
-					<posx>10</posx>
-					<posy>34</posy>
-					<height>211</height>
-					<width>1225</width>
-					<orientation>horizontal</orientation>
-					<itemgap>5</itemgap>
-					
-					<onup>300</onup>
-					<ondown>400</ondown>
-					
-					<content type="action">
-						<onclick lang="Python">handleItem(mc.GetFocusedItem(14000, 410), True)</onclick>
-					</content>
-					
-					<itemlayout width="175">
-						<control type="image">
-							<posx>15</posx>
-							<posy>5</posy>
-							<width>145</width>
-							<height>145</height>
-							<texture fallback="com.xmcnuggetx.plexee/default_icons/square.png">$INFO[ListItem.Property(image0)]</texture>
-						</control>
-						
-						<control type="label">
-							<posx>90</posx>
-							<posy>154</posy>
-							<width>160</width>
-							<height>60</height>
-							
-							<wrapmultiline>true</wrapmultiline>
-							<font>font22</font>
-							<textcolor>66FFFFFF</textcolor>
-							
-							<align>center</align>
-							<label>$INFO[ListItem.Property(custom:title)]</label>
-						</control>
-					</itemlayout>
-					
-					<focusedlayout width="175">
-						<control type="image">
-							<posx>10</posx>
-							<posy>0</posy>
-							<width>155</width>
-							<height>155</height>
-							<visible>Control.HasFocus(410)</visible>
-							<texture border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texture>
-						</control>
-						
-						<control type="image">
-							<posx>15</posx>
-							<posy>5</posy>
-							<width>145</width>
-							<height>145</height>
-							<texture fallback="com.xmcnuggetx.plexee/default_icons/square.png">$INFO[ListItem.Property(image0)]</texture>
-						</control>
-						
-						<control type="label">
-							<posx>90</posx>
-							<posy>154</posy>
-							<width>160</width>
-							<height>60</height>
-							
-							<wrapmultiline>true</wrapmultiline>
-							<font>font22</font>
-							<textcolor>FFFFFFFF</textcolor>
-							
-							<align>center</align>
-							<label>$INFO[ListItem.Property(custom:title)]</label>
-						</control>
-					</focusedlayout>
-				</control>
-			</control>
 			
 			
 		</control>

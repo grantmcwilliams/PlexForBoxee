@@ -44,11 +44,14 @@ def loadHome():
 	sharedLibraries = window.GetList(210)
 	myChannels = window.GetList(310)
 	myRecentlyAdded = window.GetList(410)
+	myOnDeck = window.GetList(510)
 
 	myLibrary.SetItems(manager.getMyLibrary())
 	sharedLibraries.SetItems(manager.getSharedLibraries())
 	myChannels.SetItems(manager.getMyChannels())
 	myRecentlyAdded.SetItems(manager.getMyRecentlyAdded())
+	myOnDeck.SetItems(manager.getMyOnDeck())
+	
 	window.GetControl(1000).SetFocus()
 
 def handleItem(listItem, fromHome = False):
@@ -75,8 +78,9 @@ def handleItem(listItem, fromHome = False):
 		nextWindowID = getWindowID(viewGroup)
 		
 		# save the state
-		if not fromHome:
-			mc.GetActiveWindow().PushState()
+		##Jinxo: I'm not convinced this is needed - and may cause stability issues
+		##if not fromHome:
+		##	mc.GetActiveWindow().PushState()
 		
 		# secondary items
 		if viewGroup == "secondary":
@@ -94,11 +98,11 @@ def handleItem(listItem, fromHome = False):
 	# Play video
 	elif itemType == "Video":
 		machineIdentifier = listItem.GetProperty("machineidentifier")
-		manager.playVideoUrl(machineIdentifier, url)
+		#manager.playVideoUrl(machineIdentifier, url)
 		#TEMP DISABLE PLAY WINDOW AND JUST PLAY VIDEO
-		#windowInformation = manager.getListItems(machineIdentifier, url)
-		#mc.ActivateWindow(PLAY_DIALOG_ID)
-		#mc.GetWindow(PLAY_DIALOG_ID).GetList(PLAY_DIALOG_LIST_ID).SetItems(windowInformation.childListItems)
+		windowInformation = manager.getListItems(machineIdentifier, url)
+		mc.ActivateWindow(PLAY_DIALOG_ID)
+		mc.GetWindow(PLAY_DIALOG_ID).GetList(PLAY_DIALOG_LIST_ID).SetItems(windowInformation.childListItems)
 	
 	elif itemType == "Track":
 		machineIdentifier = listItem.GetProperty("machineidentifier")
@@ -126,7 +130,8 @@ def showWindowInformation(window, windowInformation):
 	else:
 		window.GetList(DIRECTORY_TITLE_ID).SetItems(windowInformation.titleListItems)
 		window.GetList(DIRECTORY_ITEMS_ID).SetItems(windowInformation.childListItems)
-		mc.ShowDialogNotification(windowInformation.childListItems[0].GetLabel())
+		if len(windowInformation.childListItems) > 0 and windowInformation.childListItems[0].GetLabel() != "":
+			mc.ShowDialogNotification(windowInformation.childListItems[0].GetLabel())
 		window.GetControl(DIRECTORY_ITEMS_ID).SetFocus()
 
 def getActiveWindowID():
@@ -163,6 +168,8 @@ if ( __name__ == "__main__" ):
 	DIRECTORY_ITEMS_ID = 300
 
 	SETTINGS_DIALOG_ID = 15000
+	PLAY_DIALOG_ID = 15001
+	PLAY_DIALOG_LIST_ID = 100
 	
 	secondaryListItems = None
 	manager = plexee.PlexeeManager()

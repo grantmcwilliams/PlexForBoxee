@@ -98,13 +98,21 @@ class PlexeeManager(object):
 			for childListItem in windowInformation.childListItems: libraryListItems.append(childListItem)
 		return libraryListItems
 
+	def getMyOnDeck(self):
+		libraryListItems = mc.ListItems()
+		for	machineID in self.myServers:
+			server = self.myServers[machineID]
+			windowInformation = server.getListItems(server.getOnDeckUrl())
+			for childListItem in windowInformation.childListItems: libraryListItems.append(childListItem)
+		return libraryListItems
+
 	def getListItems(self, machineIdentifier, fullUrl):
 		server = self.getServer(machineIdentifier)
 		if server: return server.getListItems(fullUrl)
 
-	def playVideoUrl(self, machineIdentifier, fullUrl):
+	def playVideoUrl(self, machineIdentifier, fullUrl, subitem = None):
 		server = self.getServer(machineIdentifier)
-		if server: server.playVideoUrl(fullUrl)
+		if server: server.playVideoUrl(fullUrl, subitem)
 
 	def playMusicUrl(self, machineIdentifier, fullUrl):
 		server = self.getServer(machineIdentifier)
@@ -208,6 +216,7 @@ class PlexServer(object):
 	CHANNEL_URL = "/channels/all"
 	LIBRARY_URL = "/library/sections"
 	RECENTLY_ADDED_URL = "/library/recentlyAdded"
+	ON_DECK_URL = "/library/onDeck"
 	PHOTO_TRANSCODE_URL = "/photo/:/transcode"
 	STUDIO_URL = "/system/bundle/media/flags/studio/"
 	RATING_URL = "/system/bundle/media/flags/contentRating/"
@@ -248,10 +257,25 @@ class PlexServer(object):
 			self.transcoderVideoResolutions = tree.attrib.get("transcoderVideoResolutions", None)
 			self.version = tree.attrib.get("version", None)
 
+	def _getTags(self, element, subElementName, attributeName, items = 0):
+		result = ""
+		notFirst = 0
+		count = 0
+		for node in element.findall(subElementName):
+			count = count + 1
+			if items != 0 and items < count:
+				break
+			if notFirst:
+				result = result + ", "
+			val = node.attrib.get(attributeName, "")
+			if val != "":
+				notFirst = 1
+				result = result + val
+		return result
+			
 	def _createListItem(self, element, fullUrl):
 
 		# Important Properties
-
 		listItem = mc.ListItem(mc.ListItem.MEDIA_UNKNOWN)
 		listItem.SetProperty("itemtype", element.tag)
 		listItem.SetProperty("machineidentifier", util.cleanString(self.machineIdentifier))
@@ -263,26 +287,71 @@ class PlexServer(object):
 		for attribute in element.attrib:
 			#print util.cleanString(attribute), util.cleanString(element.attrib[attribute])
 			listItem.SetProperty(util.cleanString(attribute).lower(), util.cleanString(element.attrib[attribute]))
+		mediaType = element.attrib.get("type","movie")
+		
+		#title, subtitle
+		if mediaType == 'episode':
+			listItem.SetProperty("title",util.cleanString(element.attrib.get("grandparentTitle","")))
+			listItem.SetProperty("subtitle",util.cleanString(element.attrib.get("title","")))
+		else:
+			listItem.SetProperty("title",util.cleanString(element.attrib.get("title","")))
+			listItem.SetProperty("subtitle",util.cleanString(element.attrib.get("tagline","")))
 
-		# Extra information
-
-		genreNode = element.find("Genre")
-		if genreNode: listItem.SetProperty("genre", util.cleanString(genreNode.attrib.get("tag", "")))
-
+		#Resolution
+		mediaNode = element.find("Media")
+		if mediaNode:
+			resolution = mediaNode.attrib.get("videoResolution","")
+			if resolution.isdigit():
+				resolution = resolution + "p"
+			else:
+				resolution = resolution.upper()
+			listItem.SetProperty("resolution",util.cleanString(resolution))
+			
+			channels = mediaNode.attrib.get("audioChannels","")
+			if channels.isdigit():
+				channels = int(channels)
+				if channels > 2:
+					channels = str(channels - 1) + ".1 channels"
+				else:
+					channels = str(channels) + " channels"
+				listItem.SetProperty("channels",util.cleanString(channels))
+		
+		#Genre
+		listItem.SetProperty("genre", util.cleanString(self._getTags(element, "Genre", "tag", 2)))
+		#Director
+		listItem.SetProperty("director", util.cleanString(self._getTags(element, "Director", "tag")))
+		#Writer
+		listItem.SetProperty("writer", util.cleanString(self._getTags(element, "Writer", "tag")))
+		#Actors
+		listItem.SetProperty("actors", util.cleanString(self._getTags(element, "Role", "tag")))
+		
+		#Duration
 		if element.attrib.has_key("duration"):
-			listItem.SetProperty("durationformatted", str(datetime.timedelta(milliseconds=int(element.attrib["duration"]))))
+			td = datetime.timedelta(milliseconds=int(element.attrib["duration"]))
+			td = td - datetime.timedelta(microseconds=td.microseconds)
+			durParts = str(td).split(':')
+			duration = ""
+			if durParts[0] != "0":
+				duration = durParts[0] + " hr "
+			if durParts[1] != "0":
+				duration = duration + durParts[1] + " min"
+			if duration == "" and durParts[2] != "0":
+				duration = durParts[2] + " sec"
+			listItem.SetProperty("durationformatted", duration)
 
 		if element.attrib.has_key("rating"):
 			listItem.SetProperty("roundedrating", str(int(round(float(element.attrib["rating"])))))
 
 		# Image paths
 
-		if element.attrib.has_key("art"):
-			listItem.SetProperty("artpath", self.getUrl(fullUrl, element.attrib['art']))
-
 		if element.attrib.has_key("thumb"):
 			listItem.SetImage(0, self.getThumbUrl(element.attrib["thumb"], PlexServer.THUMB_WIDTH, PlexServer.THUMB_HEIGHT))
+			#listItem.SetImage(1, self.getThumbUrl(element.attrib["thumb"], 450, 500))
 
+		if element.attrib.has_key("art"):
+			listItem.SetProperty("artpath", self.getUrl(fullUrl, element.attrib['art']))
+			#listItem.SetImage(2, self.getThumbUrl(element.attrib["art"], 980, 580))
+		
 		return listItem
 
  	def isAuthenticated(self):
@@ -290,7 +359,7 @@ class PlexServer(object):
 
 	def getUrl(self, baseUrl, key, args = None):
 		"""
-		Returns a url on the server with necissary attributes from
+		Returns a url on the server with necessary attributes from
 		specified baseUrl and key
 		"""
 		# get url parts
@@ -330,7 +399,54 @@ class PlexServer(object):
 		else:
 			return None
 
-	def playVideoUrl(self, fullUrl):
+	def getSubtitles(self, fullUrl):
+		"""
+		Return list of subtitles
+		Jinxo: Only the default - and any SRT files are supported at present
+		"""
+		subItems = mc.ListItems()
+		subItem = mc.ListItem(mc.ListItem.MEDIA_UNKNOWN)
+		subItem.SetLabel("None")
+		subItem.SetPath("")
+		subItems.append(subItem)
+
+		videoUrl = self.getUrl(self.getRootUrl(), fullUrl)
+		data = mc.Http().Get(videoUrl)
+		if data:
+			tree = ElementTree.fromstring(data)
+			videoNode = tree[0]
+			foundDefault = False
+			for stream in videoNode.findall("Media/Part/Stream"):
+				if stream.attrib.get("streamType","0") != "3":
+					continue
+				subItem = mc.ListItem(mc.ListItem.MEDIA_UNKNOWN)
+				language = stream.attrib.get("language","Unknown")
+				format = stream.attrib.get("format","?")
+				path = stream.attrib.get("key","")
+				
+				source = "File"
+				if path != "":
+					subItem.SetPath(self.getUrl(self.getRootUrl(), path))
+				else:
+					#Jinxo: Only default supported at the moment, as I haven't been able to switch to another....
+					source = "Embedded"
+					default = stream.attrib.get("default","")
+					if default == "":
+						continue
+					if foundDefault:
+						continue
+					foundDefault = True
+					#Jinxo: The value doesn't matter - just enter something
+					subItem.SetPath("1");
+					
+				label = language + " (" + format.upper() + ":" + source + ")"
+				subItem.SetLabel(label.encode('utf-8'))
+				subItems.append(subItem)
+			
+		return subItems;
+		
+		
+	def playVideoUrl(self, fullUrl, subitem = None):
 		videoUrl = self.getUrl(self.getRootUrl(), fullUrl)
 		data = mc.Http().Get(videoUrl)
 		if data:
@@ -340,14 +456,61 @@ class PlexServer(object):
 			playlist = mc.PlayList(mc.PlayList.PLAYLIST_VIDEO)
 			playlist.Clear()
 
+			#Jinxo: How much can we add
+			#item = mc.ListItem(mc.ListItem.MEDIA_VIDEO_CLIP)
+            #item.SetLabel(strTitle)
+            #item.SetTitle(strTitle)
+            #item.SetTVShowTitle(strShowTitle)
+            #item.SetGenre(strGenre)
+            #item.SetStudio(strStudio)
+            #item.SetEpisode(intEpisode)
+            #item.SetSeason(intSeason)
+            #item.SetIcon(strCoverURL)
+            #item.SetThumbnail(strCoverURL)
+            #item.SetDescription(strDescription)
+            #item.SetPath(strPath)
+            #SetDuration (or get) doesn't seem to work - use a custom property
+            #item.SetProperty('duration',str(intDuration))
+            #item.SetContentRating(strContentRating)			
+			
+			#not working
+			thumbnailUrl = self.getThumbUrl(videoNode.attrib.get('thumb'), 100, 100)
+			
+			description = videoNode.attrib.get('summary')
+			contentRating = videoNode.attrib.get('contentRating')
+			
 			for part in videoNode.findall("Media/Part"):
-				li = mc.ListItem(mc.ListItem.MEDIA_UNKNOWN)
+				#li = mc.ListItem(mc.ListItem.MEDIA_UNKNOWN)
+				li = mc.ListItem(mc.ListItem.MEDIA_VIDEO_CLIP)
 				li.SetTitle(title)
 				li.SetLabel(title)
 				li.SetPath(self.getUrl(self.getRootUrl(), part.attrib.get('key')))
+				
+				#jinxo - extra details
+				li.SetThumbnail(thumbnailUrl)
+				#li.SetIcon(thumbnailUrl)
+				#li.SetDescription(description, False)
+				#li.SetProperty('duration',part.attrib.get('duration'))
+				#li.SetContentRating(contentRating)
+				
 				playlist.Add(li)
 
 			playlist.Play(0)
+			
+			#Set subtitles
+			subtitleKey = ""
+			if subitem != None:
+				import xbmc
+				import os
+				xbmc.sleep(4000)
+				
+				subtitleKey = subitem.GetPath()
+				if subtitleKey == "":
+					noSubPath = os.path.join(mc.GetApp().GetAppMediaDir(), "media", "no_subs.srt")
+					xbmc.Player().setSubtitles(noSubPath)
+				else:
+					print "Plexee: Setting subtitles to: " + subtitleKey
+					xbmc.Player().setSubtitles(subtitleKey);
 		else:
 			return None
 
@@ -395,6 +558,12 @@ class PlexServer(object):
 		Returns the recently added url
 		"""
 		return self.getUrl(self.getRootUrl(), PlexServer.RECENTLY_ADDED_URL)
+
+	def getOnDeckUrl(self):
+		"""
+		Returns the recently added url
+		"""
+		return self.getUrl(self.getRootUrl(), PlexServer.ON_DECK_URL)
 
 	def getThumbUrl(self, key, width, height):
 		"""
