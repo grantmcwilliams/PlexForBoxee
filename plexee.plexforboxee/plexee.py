@@ -13,10 +13,30 @@ class PlexeeManager(object):
 	"""
 	Manages all communication from Plexee and Plex Services
 	"""
+	ERR_NO_MYPLEX_SERVERS=1
+	ERR_MPLEX_CONNECT_FAILED=2
+	ERR_MYPLEX_NOT_AUTHENTICATED=3
+	
 	def __init__(self):
 		self.myServers = dict()
+		self.connectionErrors = []
+		self.connectionErrorPos = 0
 		self.sharedServers = dict()
 		self.myplex = MyPlexService()
+
+	def clearConnectionErrors(self):
+		self.connectionErrors = []
+		self.connectionErrorPos = 0
+		
+	def addConnectionError(self, msg):
+		self.connectionErrors.append(msg)
+
+	def getNextConnectionError(self):
+		if self.connectionErrorPos > len(self.connectionErrors)-1:
+			self.connectionErrorPos = 0
+		msg = self.connectionErrors[self.connectionErrorPos]
+		self.connectionErrorPos = self.connectionErrorPos + 1
+		return msg
 
 	def addMyServerObject(self, server):
 		if server.isAuthenticated():
@@ -121,12 +141,20 @@ class PlexeeManager(object):
 	def myPlexLogin(self, username, password):
 		self.myplex.login(username, password)
 		if self.myplex.isAuthenticated():
-			myPlexServers, myPlexRemote = self.myplex.getServers()
+			myPlexServers, myPlexRemote, foundServer = self.myplex.getServers()
+			
+			if len(myPlexServers) == 0 and len(myPlexRemote) == 0:
+				if foundServer:
+					return self.ERR_MPLEX_CONNECT_FAILED
+				else:
+					return self.ERR_NO_MYPLEX_SERVERS
+				
 			self.addMyServers(myPlexServers)
 			self.addSharedServers(myPlexRemote)
+			return 0
 		else:
-			mc.ShowDialogNotification("Error logging into myPlex service")
-
+			return self.ERR_MYPLEX_NOT_AUTHENTICATED
+			
 class MyPlexService(object):
 	AUTH_URL = "https://my.plexapp.com/users/sign_in.xml"
 	LIBRARY_URL = "https://my.plexapp.com/pms/system/library/sections?auth_token=%s"
@@ -187,6 +215,8 @@ class MyPlexService(object):
 		localServers = dict()
 		remoteServers = dict()
 
+		foundServer = False
+		
 		if self.isAuthenticated():
 			data = mc.Http().Get(self.getLibraryUrl())
 			if data:
@@ -198,11 +228,17 @@ class MyPlexService(object):
 					machineIdentifier = child.attrib.get("machineIdentifier", "")
 					local = child.attrib.get("owned", "0")
 
+					print "Plexee: MyPlex found %s:%s" % (host,port)
+					foundServer = True
+					server = PlexServer(host, port, accessToken)
+					if not server.isAuthenticated():
+						continue
 					if local == "1":
-						localServers[machineIdentifier] = PlexServer(host, port, accessToken)
+						localServers[machineIdentifier] = server
 					else:
-						remoteServers[machineIdentifier] = PlexServer(host, port, accessToken)
-		return localServers, remoteServers
+						remoteServers[machineIdentifier] = server
+		
+		return localServers, remoteServers, foundServer
 
 class PlexServer(object):
 	CHANNEL_URL = "/channels/all"
