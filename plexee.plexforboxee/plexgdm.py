@@ -14,6 +14,7 @@ class PlexGDM:
 
 	def __init__(self):
 		self.IP_PlexGDM = '<broadcast>'
+		#self.IP_PlexGDM = '239.0.0.250'
 		self.Port_PlexGDM = 32414
 		self.Msg_PlexGDM = 'M-SEARCH * HTTP/1.0'
 
@@ -27,14 +28,14 @@ class PlexGDM:
 	result:
 		PMS_list - dict() of Plex Media servers found
 	"""
-	def getServers(self):
+	def getServers(self, timeoutsec):
 		self.__printDebug("***")
 		self.__printDebug("looking up Plex Media Server")
 		self.__printDebug("***")
 		
 		# setup socket for discovery -> multicast message
 		GDM = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-		GDM.settimeout(1.0)
+		GDM.settimeout(timeoutsec)
 		
 		# Set the time-to-live for messages to 1 for local network
 		GDM.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
