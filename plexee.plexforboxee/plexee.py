@@ -433,6 +433,11 @@ class PlexServer(object):
 			tree = ElementTree.fromstring(data)
 			titleListItem = self._createListItem(tree, fullUrl)
 			titleListItem.SetProperty("plexeeview", "grid")
+			art = tree.attrib.get("art","")
+			if art:
+				art = self.getThumbUrl(art, 980, 580)
+				titleListItem.SetProperty("art", art)
+			
 			titleListItems = mc.ListItems()
 			titleListItems.append(titleListItem)
 
@@ -531,7 +536,6 @@ class PlexServer(object):
 			
 			#If we are less than 95% complete, store resume time
 			if progress > 0 and progress < 95:
-				print "Plexee: Updating progress: %s%" % str(progress)
 				progress=currentTime*1000
 				if offset == 0:
 					#Clear it, likely start from beginning clicked

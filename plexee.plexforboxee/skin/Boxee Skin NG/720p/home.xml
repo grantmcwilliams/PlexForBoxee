@@ -63,7 +63,7 @@
 					<ondown>200</ondown>
 					
 					<content type="action">
-						<onclick lang="Python">handleItem(mc.GetFocusedItem(14000, 110), True)</onclick>
+						<onclick lang="Python">handleItem(mc.GetFocusedItem(14000, 110), 14000)</onclick>
 					</content>
 					
 					<itemlayout width="175">
@@ -160,7 +160,7 @@
 					<ondown>300</ondown>
 					
 					<content type="action">
-						<onclick lang="Python">handleItem(mc.GetFocusedItem(14000, 210), True)</onclick>
+						<onclick lang="Python">handleItem(mc.GetFocusedItem(14000, 210), 14000)</onclick>
 					</content>
 					
 					<itemlayout width="175">
@@ -257,7 +257,7 @@
 					<ondown>500</ondown>
 					
 					<content type="action">
-						<onclick lang="Python">handleItem(mc.GetFocusedItem(14000, 410), True)</onclick>
+						<onclick lang="Python">handleItem(mc.GetFocusedItem(14000, 410), 14000)</onclick>
 					</content>
 					
 					<itemlayout width="175">
@@ -354,7 +354,7 @@
 					<ondown>300</ondown>
 					
 					<content type="action">
-						<onclick lang="Python">handleItem(mc.GetFocusedItem(14000, 510), True)</onclick>
+						<onclick lang="Python">handleItem(mc.GetFocusedItem(14000, 510), 14000)</onclick>
 					</content>
 					
 					<itemlayout width="175">
@@ -451,7 +451,7 @@
 					<ondown>400</ondown>
 					
 					<content type="action">
-						<onclick lang="Python">handleItem(mc.GetFocusedItem(14000, 310), True)</onclick>
+						<onclick lang="Python">handleItem(mc.GetFocusedItem(14000, 310), 14000)</onclick>
 					</content>
 					
 					<itemlayout width="175">

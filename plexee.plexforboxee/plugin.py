@@ -121,7 +121,7 @@ def loadContent():
 def loadHome():
 	mc.ActivateWindow(getWindowID("home"))
 	
-def handleItem(listItem, fromHome = False):
+def handleItem(listItem, fromWindowId = 0):
 	global secondaryListItems
 	itemType = listItem.GetProperty("itemtype")
 	url = listItem.GetPath()
@@ -144,15 +144,19 @@ def handleItem(listItem, fromHome = False):
 		viewGroup = windowInformation.titleListItems[0].GetProperty("viewgroup")
 		nextWindowID = getWindowID(viewGroup)
 		
-		# save the state
-		##Jinxo: I'm not convinced this is needed - and may cause stability issues
-		##if not fromHome:
-		##	mc.GetActiveWindow().PushState()
+		# save the state if needed
+		if nextWindowID == fromWindowId:
+			mc.GetActiveWindow().PushState()
+		
+		#Set any Art
+		li = windowInformation.titleListItems[0]
+		if li.GetProperty("art") != "":
+			li.SetImage(0, li.GetProperty("art"))
 		
 		# secondary items
 		if viewGroup == "secondary":
 			secondaryListItems = windowInformation.childListItems
-			if fromHome:
+			if fromWindowId == getWindowID('home'):
 				handleItem(windowInformation.childListItems[0])
 			else:
 				#clearItems()
@@ -162,7 +166,7 @@ def handleItem(listItem, fromHome = False):
 			# start the new window
 			window = activateWindow(nextWindowID)
 			showWindowInformation(window, windowInformation)
-	
+
 	# Play video
 	elif itemType == "Video":
 		machineIdentifier = listItem.GetProperty("machineidentifier")
@@ -238,6 +242,7 @@ if ( __name__ == "__main__" ):
 	SETTINGS_DIALOG_ID = 15000
 	PLAY_DIALOG_ID = 15001
 	PLAY_DIALOG_LIST_ID = 100
+	SERIES_LIST_ID = 100
 	CONNECT_DIALOG_ID = 15002
 	
 	secondaryListItems = None
