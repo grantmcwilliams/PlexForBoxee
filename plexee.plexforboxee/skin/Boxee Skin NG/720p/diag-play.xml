@@ -202,7 +202,7 @@ if len(subItems) > 1:
 			<control type="group">
 				<posy>200</posy>
 				<control type="textbox" id="300">
-					<width>800</width>
+					<width>780</width>
 					<height>200</height>
 					<font>font22</font>
 					<textcolor>FFEEEEEE</textcolor>
@@ -287,7 +287,48 @@ machineIdentifier = li.GetProperty("machineidentifier")
 #Choosing none actually uses a no_subs.srt file to force them off
 itemNumber = mc.GetWindow(15001).GetList(310).GetFocusedItem()
 subitem = mc.GetWindow(15001).GetList(310).GetItem(itemNumber)
-manager.playVideoUrl(machineIdentifier, li.GetPath(), subitem)
+
+refresh = True
+
+#Check for resume
+viewOffset = li.GetProperty("viewOffset")
+if viewOffset == "" or int(viewOffset) == 0:
+	#no offset just play item
+	manager.playVideoUrl(machineIdentifier, li.GetPath(), subitem)
+else:
+	#determine resume point
+	s = int(int(viewOffset)/1000)
+	m = 0
+	h = 0
+	f = ""
+	if s>=60:
+		m=int(s/60)
+	if m>=60:
+		h=int(m/60)
+		f = str(h) + " hr "
+	s=s-m*60
+	m=m-h*60
+	if m>0:
+		f = f + str(m) + " min "
+	if s>0:
+		f = f + str(s) + " sec "
+
+	#show resume dialog
+	selection = mc.ShowDialogSelect("Resume", ["Resume from "+f, "Start from beginning"])
+	if selection == 0: #resume
+		manager.playVideoUrl(machineIdentifier, li.GetPath(), subitem, int(viewOffset))	
+	elif selection == 1: #from beginning
+		manager.playVideoUrl(machineIdentifier, li.GetPath(), subitem)
+	else:
+		#nothing more to do
+		refresh = False
+	
+#refresh deck on exit
+if refresh:
+	window = mc.GetWindow(14000)
+	myOnDeck = window.GetList(510)
+	myOnDeck.SetItems(manager.getMyOnDeck())
+	
 ]]>
 					</onclick>
 				</control>

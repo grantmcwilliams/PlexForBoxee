@@ -64,7 +64,7 @@
 					<textcolor>66FFFFFF</textcolor>
 					
 					<aligny>center</aligny>
-					<label>$INFO[ListItem.Property(custom:subtitle)]</label>
+					<label>$INFO[ListItem.Property(custom:title)]</label>
 				</control>
 				
 			</itemlayout>
@@ -98,7 +98,7 @@
 					<textcolor>66FFFFFF</textcolor>
 					
 					<aligny>center</aligny>
-					<label>$INFO[ListItem.Property(custom:subtitle)]</label>
+					<label>$INFO[ListItem.Property(custom:title)]</label>
 				</control>
 				
 				<control type="label">

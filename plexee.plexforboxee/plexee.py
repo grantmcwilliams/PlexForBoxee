@@ -6,6 +6,7 @@ import urllib
 import urlparse
 import util
 import uuid
+import xbmc
 
 from elementtree import ElementTree
 
@@ -13,10 +14,30 @@ class PlexeeManager(object):
 	"""
 	Manages all communication from Plexee and Plex Services
 	"""
+	ERR_NO_MYPLEX_SERVERS=1
+	ERR_MPLEX_CONNECT_FAILED=2
+	ERR_MYPLEX_NOT_AUTHENTICATED=3
+	
 	def __init__(self):
 		self.myServers = dict()
+		self.connectionErrors = []
+		self.connectionErrorPos = 0
 		self.sharedServers = dict()
 		self.myplex = MyPlexService()
+
+	def clearConnectionErrors(self):
+		self.connectionErrors = []
+		self.connectionErrorPos = 0
+		
+	def addConnectionError(self, msg):
+		self.connectionErrors.append(msg)
+
+	def getNextConnectionError(self):
+		if self.connectionErrorPos > len(self.connectionErrors)-1:
+			self.connectionErrorPos = 0
+		msg = self.connectionErrors[self.connectionErrorPos]
+		self.connectionErrorPos = self.connectionErrorPos + 1
+		return msg
 
 	def addMyServerObject(self, server):
 		if server.isAuthenticated():
@@ -110,9 +131,9 @@ class PlexeeManager(object):
 		server = self.getServer(machineIdentifier)
 		if server: return server.getListItems(fullUrl)
 
-	def playVideoUrl(self, machineIdentifier, fullUrl, subitem = None):
+	def playVideoUrl(self, machineIdentifier, fullUrl, subitem=None, offset=0):
 		server = self.getServer(machineIdentifier)
-		if server: server.playVideoUrl(fullUrl, subitem)
+		if server: server.playVideoUrl(fullUrl, subitem, offset)
 
 	def playMusicUrl(self, machineIdentifier, fullUrl):
 		server = self.getServer(machineIdentifier)
@@ -129,12 +150,23 @@ class PlexeeManager(object):
 	def myPlexLogin(self, username, password):
 		self.myplex.login(username, password)
 		if self.myplex.isAuthenticated():
-			myPlexServers, myPlexRemote = self.myplex.getServers()
+			myPlexServers, myPlexRemote, foundServer = self.myplex.getServers()
+			
+			if len(myPlexServers) == 0 and len(myPlexRemote) == 0:
+				if foundServer:
+					return self.ERR_MPLEX_CONNECT_FAILED
+				else:
+					return self.ERR_NO_MYPLEX_SERVERS
+				
 			self.addMyServers(myPlexServers)
 			self.addSharedServers(myPlexRemote)
+			return 0
 		else:
-			mc.ShowDialogNotification("Error logging into myPlex service")
+			return self.ERR_MYPLEX_NOT_AUTHENTICATED
 
+"""
+Provides an interface to the MyPlex service
+"""			
 class MyPlexService(object):
 	AUTH_URL = "https://my.plexapp.com/users/sign_in.xml"
 	LIBRARY_URL = "https://my.plexapp.com/pms/system/library/sections?auth_token=%s"
@@ -160,7 +192,6 @@ class MyPlexService(object):
 
 	def updateToken(self):
 		http = mc.Http()
-
 		http.SetHttpHeader("X-Plex-Platform", "Boxee")
 		http.SetHttpHeader("X-Plex-Platform-Version", mc.GetInfoString("System.BuildVersion"))
 		http.SetHttpHeader("X-Plex-Provides", "player")
@@ -195,6 +226,8 @@ class MyPlexService(object):
 		localServers = dict()
 		remoteServers = dict()
 
+		foundServer = False
+		
 		if self.isAuthenticated():
 			data = mc.Http().Get(self.getLibraryUrl())
 			if data:
@@ -206,12 +239,21 @@ class MyPlexService(object):
 					machineIdentifier = child.attrib.get("machineIdentifier", "")
 					local = child.attrib.get("owned", "0")
 
+					print "Plexee: MyPlex found %s:%s" % (host,port)
+					foundServer = True
+					server = PlexServer(host, port, accessToken)
+					if not server.isAuthenticated():
+						continue
 					if local == "1":
-						localServers[machineIdentifier] = PlexServer(host, port, accessToken)
+						localServers[machineIdentifier] = server
 					else:
-						remoteServers[machineIdentifier] = PlexServer(host, port, accessToken)
-		return localServers, remoteServers
+						remoteServers[machineIdentifier] = server
+		
+		return localServers, remoteServers, foundServer
 
+"""
+Provides an interface to a Plex server
+"""
 class PlexServer(object):
 	CHANNEL_URL = "/channels/all"
 	LIBRARY_URL = "/library/sections"
@@ -296,7 +338,7 @@ class PlexServer(object):
 		else:
 			listItem.SetProperty("title",util.cleanString(element.attrib.get("title","")))
 			listItem.SetProperty("subtitle",util.cleanString(element.attrib.get("tagline","")))
-
+		
 		#Resolution
 		mediaNode = element.find("Media")
 		if mediaNode:
@@ -345,7 +387,11 @@ class PlexServer(object):
 		# Image paths
 
 		if element.attrib.has_key("thumb"):
-			listItem.SetImage(0, self.getThumbUrl(element.attrib["thumb"], PlexServer.THUMB_WIDTH, PlexServer.THUMB_HEIGHT))
+			#listItem.SetImage(0, self.getThumbUrl(element.attrib["thumb"], PlexServer.THUMB_WIDTH, PlexServer.THUMB_HEIGHT))
+			if mediaType == 'movie':
+				listItem.SetImage(0, self.getThumbUrl(element.attrib["thumb"], 155, 288))
+			else:
+				listItem.SetImage(0, self.getThumbUrl(element.attrib["thumb"], 288, 155))
 			#listItem.SetImage(1, self.getThumbUrl(element.attrib["thumb"], 450, 500))
 
 		if element.attrib.has_key("art"):
@@ -444,73 +490,127 @@ class PlexServer(object):
 				subItems.append(subItem)
 			
 		return subItems;
+	
+	"""
+	Update media played position for onDeck and resuming behaviour
+	An item will be added to the deck by plex based on this call
+	"""
+	def setMediaPlayedPosition(self, mediaKey, positionMsec):
+		url = self.getRootUrl() + ":/progress?key="+mediaKey+"&identifier=com.plexapp.plugins.library&time="+str(positionMsec)
+		mc.Http().Get(url)
+	
+	"""
+	Set media as watched
+	Removes from deck
+	"""
+	def setMediaWatched(self, mediaKey):
+		url = self.getRootUrl() + ":/scrobble?key="+mediaKey+"&identifier=com.plexapp.plugins.library"
+		mc.Http().Get(url)
 		
-		
-	def playVideoUrl(self, fullUrl, subitem = None):
+	"""
+	Set media as unwatched
+	"""
+	def setMediaUnwatched(self, mediaKey):
+		url = self.getRootUrl() + ":/unscrobble?key="+mediaKey+"&identifier=com.plexapp.plugins.library"
+		mc.Http().Get(url)
+
+	"""
+	Update the played progress every 5 seconds while the player is playing
+	"""
+	def monitorPlayback(self, key, offset):
+		progress = 0
+		#Whilst the file is playing back
+		while xbmc.Player().isPlaying():
+			#Get the current playback time
+			currentTime = int(xbmc.Player().getTime())
+			totalTime = int(xbmc.Player().getTotalTime())
+			try:
+				progress = int(( float(currentTime) / float(totalTime) ) * 100)
+			except:
+				progress = 0
+			
+			#If we are less than 95% complete, store resume time
+			if progress > 0 and progress < 95:
+				print "Plexee: Updating progress: %s%" % str(progress)
+				progress=currentTime*1000
+				if offset == 0:
+					#Clear it, likely start from beginning clicked
+					offset = 1
+					self.setMediaWatched(key)
+				self.setMediaPlayedPosition(key, progress)
+
+			#Otherwise, mark as watched
+			elif progress >= 95:
+				self.setMediaWatched(key)
+				break
+			xbmc.sleep(5000)
+		#If we get this far, playback has stopped
+		print "Plexee: Playback Stopped (or at 95%)"
+
+	def playVideoUrl(self, fullUrl, subitem = None, offset=0):
 		videoUrl = self.getUrl(self.getRootUrl(), fullUrl)
 		data = mc.Http().Get(videoUrl)
 		if data:
 			tree = ElementTree.fromstring(data)
 			videoNode = tree[0]
-			title = videoNode.attrib.get("title", "Plex Video")
 			playlist = mc.PlayList(mc.PlayList.PLAYLIST_VIDEO)
 			playlist.Clear()
 
-			#Jinxo: How much can we add
-			#item = mc.ListItem(mc.ListItem.MEDIA_VIDEO_CLIP)
-            #item.SetLabel(strTitle)
-            #item.SetTitle(strTitle)
-            #item.SetTVShowTitle(strShowTitle)
-            #item.SetGenre(strGenre)
-            #item.SetStudio(strStudio)
-            #item.SetEpisode(intEpisode)
-            #item.SetSeason(intSeason)
-            #item.SetIcon(strCoverURL)
-            #item.SetThumbnail(strCoverURL)
-            #item.SetDescription(strDescription)
-            #item.SetPath(strPath)
-            #SetDuration (or get) doesn't seem to work - use a custom property
-            #item.SetProperty('duration',str(intDuration))
-            #item.SetContentRating(strContentRating)			
-			
-			#not working
-			thumbnailUrl = self.getThumbUrl(videoNode.attrib.get('thumb'), 100, 100)
-			
-			description = videoNode.attrib.get('summary')
-			contentRating = videoNode.attrib.get('contentRating')
+			thumbnailUrl = self.getThumbUrl(videoNode.attrib.get("thumb"), 100, 100)
+			description = util.cleanString(videoNode.attrib.get("summary",""))
+			title = util.cleanString(videoNode.attrib.get("title", "Plex Video"))
+			contentRating = util.cleanString(videoNode.attrib.get("contentRating",""))
 			
 			for part in videoNode.findall("Media/Part"):
-				#li = mc.ListItem(mc.ListItem.MEDIA_UNKNOWN)
 				li = mc.ListItem(mc.ListItem.MEDIA_VIDEO_CLIP)
 				li.SetTitle(title)
 				li.SetLabel(title)
-				li.SetPath(self.getUrl(self.getRootUrl(), part.attrib.get('key')))
-				
-				#jinxo - extra details
+				li.SetPath(self.getUrl(self.getRootUrl(), part.attrib.get("key")))
 				li.SetThumbnail(thumbnailUrl)
-				#li.SetIcon(thumbnailUrl)
-				#li.SetDescription(description, False)
-				#li.SetProperty('duration',part.attrib.get('duration'))
-				#li.SetContentRating(contentRating)
+				li.SetDescription(description, False)
+				li.SetContentRating(contentRating)
+				
+				#TV Episode extras
+				mediaType = videoNode.attrib.get("type","movie")
+				if mediaType == 'episode':
+					li.SetTVShowTitle(util.cleanString(videoNode.attrib.get("grandparentTitle","")))
+					li.SetEpisode(int(videoNode.attrib.get('index')))
+					li.SetSeason(int(videoNode.attrib.get('parentIndex')))
 				
 				playlist.Add(li)
 
 			playlist.Play(0)
 			
+			#ok wait for player to start
+			loop = 0
+			print "Plexee: Waiting on player"
+			while not xbmc.Player().isPlaying():
+				xbmc.sleep(1000)
+				loop = loop + 1
+				if loop > 10:
+					break
+			
+			print "Plexee: Player started..."
+			#set any offset
+			if offset != 0:
+				xbmc.Player().seekTime(offset/1000)
+
 			#Set subtitles
 			subtitleKey = ""
 			if subitem != None:
-				import xbmc
 				import os
-				xbmc.sleep(4000)
-				
 				subtitleKey = subitem.GetPath()
 				if subtitleKey == "":
 					noSubPath = os.path.join(mc.GetApp().GetAppMediaDir(), "media", "no_subs.srt")
 					xbmc.Player().setSubtitles(noSubPath)
 				else:
 					print "Plexee: Setting subtitles to: " + subtitleKey
-					xbmc.Player().setSubtitles(subtitleKey);
+					xbmc.Player().setSubtitles(subtitleKey)
+			
+			#Monitor playback and update progress to plex
+			key = videoNode.attrib.get('ratingKey')
+			self.monitorPlayback(key, offset)
+			
 		else:
 			return None
 

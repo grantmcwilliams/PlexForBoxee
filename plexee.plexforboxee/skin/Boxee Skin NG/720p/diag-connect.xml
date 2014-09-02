@@ -1,0 +1,150 @@
+<?xml version="1.0"?>
+<window type="dialog" id="15002">
+	<allowoverlay>no</allowoverlay>
+	<zorder>0</zorder>
+	<defaultcontrol always="true">401</defaultcontrol>
+	<controls>
+		<!-- BACKGROUND =============================================================-->
+		
+		<!-- dim the lower window -->
+		<control type="image">
+			<width>1280</width>
+			<height>720</height>
+			<colordiffuse>CC000000</colordiffuse>
+			<texture>com.xmcnuggetx.plexee/shapes/square.png</texture>
+		</control>
+		
+		<control type="group">
+			<posx>340</posx>
+			<posy>110</posy>
+			<width>600</width>
+			<height>550</height>
+			
+			<!-- setting window background -->
+			<control type="image">
+				<width>600</width>
+				<height>550</height>
+				<colordiffuse>FF0E1418</colordiffuse>
+				<texture border="10">com.xmcnuggetx.plexee/shapes/rounded.png</texture>
+			</control>
+			
+			<!-- setting window outline -->
+			<control type="image">
+				<width>600</width>
+				<height>550</height>
+				<texture border="10">com.xmcnuggetx.plexee/shapes/rounded_outline.png</texture>
+			</control>
+			
+			
+			<!-- TITLE ==================================================================-->
+			<control type="image">
+				<posx>10</posx>
+				<posy>50</posy>
+				<width>580</width>
+				<height>3</height>
+				<colordiffuse>33FFFFFF</colordiffuse>
+				<texture>com.xmcnuggetx.plexee/shapes/square.png</texture>
+			</control>
+			
+			<control type="label">
+				<posx>10</posx>
+				<width>580</width>
+				<height>60</height>
+
+				<align>center</align>
+				<aligny>center</aligny>
+				<label>[B]Connecting...[/B]</label>
+				<font>font40</font>
+				<textcolor>FFFFFFFF</textcolor>
+			</control>
+			
+			<!-- CONTENTS ===============================================================-->
+			<control type="grouplist" id="50">
+				<posx>20</posx>
+				<posy>70</posy>
+				<width>560</width>
+				<height>450</height>
+				<orientation>vertical</orientation>
+				<usecontrolcoords>true</usecontrolcoords>
+				<itemgap>5</itemgap>
+				
+				<!-- Discover Clients -->
+				<control type="label" id="100">
+					<width>560</width>
+					<height>80</height>
+					<label>Please wait - searching for servers....</label>
+					<font>font24</font>
+					<align>left</align>
+					<textcolor>FF999999</textcolor>
+				</control>
+				
+				<control type="label" id="300">
+					<width>560</width>
+					<height>300</height>
+					<label></label>
+					<font>font24</font>
+					<align>left</align>
+					<visible>true</visible>
+					<wrapmultiline>true</wrapmultiline>
+					<textcolor>FFFFFFFF</textcolor>
+				</control>
+				
+				<control type="grouplist">
+					<width>560</width>
+					<height>90</height>
+					<orientation>horizontal</orientation>
+					<usecontrolcoords>true</usecontrolcoords>
+					<itemgap>5</itemgap>					
+
+					<control type="button" id="401">
+						<width>100</width>
+						<height>42</height>
+						
+						<font>font22</font>
+						<align>center</align>
+						<aligny>center</aligny>
+						<label>&gt;</label>
+						<visible>false</visible>
+						<onleft>-</onleft>
+						<onright>402</onright>
+						<onup>-</onup>
+						<ondown>-</ondown>
+						
+						<texturefocus border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texturefocus>
+						<texturenofocus border="10">com.xmcnuggetx.plexee/shapes/rounded_white_20.png</texturenofocus>
+						
+						<textcolor>FFCCCCCC</textcolor>
+						<focusedcolor>FFFFFFFF</focusedcolor>
+						
+						<onclick lang="python">showNextError()</onclick>
+					</control>
+
+					<control type="button" id="402">
+						<width>100</width>
+						<height>42</height>
+						
+						<font>font22</font>
+						<align>center</align>
+						<aligny>center</aligny>
+						<label>Close</label>
+						<visible>false</visible>
+						<onleft>401</onleft>
+						<onright>-</onright>
+						<onup>-</onup>
+						<ondown>-</ondown>
+						
+						<texturefocus border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texturefocus>
+						<texturenofocus border="10">com.xmcnuggetx.plexee/shapes/rounded_white_20.png</texturenofocus>
+						
+						<textcolor>FFCCCCCC</textcolor>
+						<focusedcolor>FFFFFFFF</focusedcolor>
+						
+						<onclick lang="python">xbmc.executebuiltin("Dialog.Close(15002)")</onclick>
+					</control>
+				</control>
+
+			</control>
+			
+		</control>
+	</controls>
+</window>
