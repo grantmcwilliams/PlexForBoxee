@@ -14,13 +14,10 @@ TODO
 Manual Install Instructions
 ---------------------------
 
-*Option 1*
+*Option 1* - plexforboxee 1.6 in repository
 * Navigate to Apps -> Repositories on your Boxee
 * Click the + button on the top right to add the PlexforBoxee repository - http://grantmcwilliams.com/plexforboxee
 * Browse the PlexforBoxee repository and add the Plexee App
-* Manual configure Plexee using the Plexee app
-* Enter the IP address of your Plex Media Server
-* Enter the port number of your Plex Media Server (default is 32400)
 
 
 *Option 2*
