@@ -6,14 +6,12 @@
 	
 	<controls>		
 		<!-- BACKGROUND =============================================================-->
-		
-		<!-- page background -->
 		<control type="image">
 			<width>1280</width>
 			<height>720</height>
 			<texture>com.xmcnuggetx.plexee/defaultbackground.png</texture>
 		</control>
-		
+
 		<control type="image">
 			<posy>0</posy>
 			<posx>30</posx>
@@ -50,7 +48,7 @@
 			<onup>50</onup>
 			
 			<content type="action">
-				<onclick lang="Python">handleItem(mc.GetFocusedItem(14001, 200))</onclick>
+				<onclick lang="Python">handleItem(mc.GetFocusedItem(14001, 200), 14001)</onclick>
 			</content>
 			
 			<itemlayout height="40">
@@ -152,7 +150,7 @@
 			<onup>51</onup>
 			
 			<content type="action">
-				<onclick lang="Python">handleItem(mc.GetFocusedItem(14001, 300))</onclick>
+				<onclick lang="Python">handleItem(mc.GetFocusedItem(14001, 300), 14001)</onclick>
 			</content>
 			
 			<itemlayout width="175" height="300">

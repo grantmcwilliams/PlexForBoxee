@@ -52,19 +52,6 @@ def initPlexee():
 				#Manual set but no server found
 				manager.addConnectionError("Failed to connect to plex server: "+host+":"+port+"[CR][CR]Check the server IP and port is correct.")
 
-		#try MyPlex
-		if config.GetValue("usemyplex"):
-			username = config.GetValue("myplexusername")
-			passsword = config.GetValue("myplexpassword")
-			if username and passsword:
-				result = manager.myPlexLogin(username, passsword)
-				if result == manager.ERR_NO_MYPLEX_SERVERS:
-					manager.addConnectionError("No registered MyPlex servers to connect to")
-				elif result == manager.ERR_MPLEX_CONNECT_FAILED:
-					manager.addConnectionError("Unable to connect to any MyPlex registered servers.[CR][CR]Please check MyPlex for the server details and check connectivity.")
-				elif result == manager.ERR_MYPLEX_NOT_AUTHENTICATED:
-					manager.addConnectionError("Failed to connect to MyPlex.[CR][CR]Authentication failed - check your username and password")
-
 		#try GDM auto discovery
 		if config.GetValue("usediscover"):
 			discoverTime = config.GetValue("discoverTime")
@@ -88,6 +75,19 @@ def initPlexee():
 					"[CR]3. Try increasing the GDM response time in the settings screen" + \
 					"[CR][CR]Otherwise use the Manual Server or MyPlex options in the settings screen.")
 
+		#try MyPlex
+		if config.GetValue("usemyplex"):
+			username = config.GetValue("myplexusername")
+			passsword = config.GetValue("myplexpassword")
+			if username and passsword:
+				result = manager.myPlexLogin(username, passsword)
+				if result == manager.ERR_NO_MYPLEX_SERVERS:
+					manager.addConnectionError("No registered MyPlex servers to connect to")
+				elif result == manager.ERR_MPLEX_CONNECT_FAILED:
+					manager.addConnectionError("Unable to connect to any MyPlex registered servers.[CR][CR]Please check MyPlex for the server details and check connectivity.")
+				elif result == manager.ERR_MYPLEX_NOT_AUTHENTICATED:
+					manager.addConnectionError("Failed to connect to MyPlex.[CR][CR]Authentication failed - check your username and password")
+
 		if len(manager.connectionErrors) > 0:
 			#An Error Occurred
 			updateConnectionResult()
@@ -107,18 +107,21 @@ def loadContent():
 	sharedLibraries = window.GetList(210)
 	myChannels = window.GetList(310)
 	myRecentlyAdded = window.GetList(410)
+	myOnDeck = window.GetList(510)
 
 	myLibrary.SetItems(manager.getMyLibrary())
 	sharedLibraries.SetItems(manager.getSharedLibraries())
 	myChannels.SetItems(manager.getMyChannels())
 	myRecentlyAdded.SetItems(manager.getMyRecentlyAdded())
+	myOnDeck.SetItems(manager.getMyOnDeck())
+	
 	window.GetControl(1000).SetFocus()
 
 			
 def loadHome():
 	mc.ActivateWindow(getWindowID("home"))
 	
-def handleItem(listItem, fromHome = False):
+def handleItem(listItem, fromWindowId = 0):
 	global secondaryListItems
 	itemType = listItem.GetProperty("itemtype")
 	url = listItem.GetPath()
@@ -141,31 +144,51 @@ def handleItem(listItem, fromHome = False):
 		viewGroup = windowInformation.titleListItems[0].GetProperty("viewgroup")
 		nextWindowID = getWindowID(viewGroup)
 		
-		# save the state
-		if not fromHome:
+		# save the state if needed
+		if nextWindowID == fromWindowId:
 			mc.GetActiveWindow().PushState()
 		
 		# secondary items
 		if viewGroup == "secondary":
 			secondaryListItems = windowInformation.childListItems
-			if fromHome:
+			if fromWindowId == getWindowID('home'):
 				handleItem(windowInformation.childListItems[0])
 			else:
 				#clearItems()
+				window = mc.GetActiveWindow()
 				showWindowInformation(window, windowInformation)
 		else:
 			# start the new window
 			window = activateWindow(nextWindowID)
 			showWindowInformation(window, windowInformation)
-	
+
 	# Play video
 	elif itemType == "Video":
 		machineIdentifier = listItem.GetProperty("machineidentifier")
-		manager.playVideoUrl(machineIdentifier, url)
-		#TEMP DISABLE PLAY WINDOW AND JUST PLAY VIDEO
-		#windowInformation = manager.getListItems(machineIdentifier, url)
-		#mc.ActivateWindow(PLAY_DIALOG_ID)
-		#mc.GetWindow(PLAY_DIALOG_ID).GetList(PLAY_DIALOG_LIST_ID).SetItems(windowInformation.childListItems)
+		windowInformation = manager.getListItems(machineIdentifier, url)
+
+		#Set images for play window
+		server = manager.getServer(listItem.GetProperty("machineIdentifier"));
+		art = listItem.GetProperty("art")
+		thumb = listItem.GetProperty("thumb")
+
+		li = windowInformation.childListItems[0];
+		titleLi = windowInformation.titleListItems[0];
+		
+		if art == "":
+			art = li.GetProperty("art")
+
+		if thumb != "":
+			li.SetImage(1, server.getThumbUrl(thumb, 450, 500))
+			
+		if art != "":
+			li.SetImage(2, server.getThumbUrl(art, 980, 580))
+		
+		#Load any subtitles
+		subItems = server.getSubtitles(listItem.GetPath())
+		mc.ActivateWindow(PLAY_DIALOG_ID)
+		mc.GetWindow(PLAY_DIALOG_ID).GetList(PLAY_DIALOG_LIST_ID).SetItems(windowInformation.childListItems)
+		mc.GetWindow(PLAY_DIALOG_ID).GetList(310).SetItems(subItems)
 	
 	elif itemType == "Track":
 		machineIdentifier = listItem.GetProperty("machineidentifier")
@@ -193,7 +216,8 @@ def showWindowInformation(window, windowInformation):
 	else:
 		window.GetList(DIRECTORY_TITLE_ID).SetItems(windowInformation.titleListItems)
 		window.GetList(DIRECTORY_ITEMS_ID).SetItems(windowInformation.childListItems)
-		mc.ShowDialogNotification(windowInformation.childListItems[0].GetLabel())
+		if len(windowInformation.childListItems) > 0 and windowInformation.childListItems[0].GetLabel() != "":
+			mc.ShowDialogNotification(windowInformation.childListItems[0].GetLabel())
 		window.GetControl(DIRECTORY_ITEMS_ID).SetFocus()
 
 def getActiveWindowID():
@@ -210,7 +234,7 @@ def loadSecondaryItems():
 		mc.GetActiveWindow().GetList(200).SetItems(secondaryListItems)
 	else:
 		#mc.ShowDialogNotification("no secondary")
-		mc.GetActiveWidnow().GetList(200).SetItems(mc.ListItems())
+		mc.GetActiveWindow().GetList(200).SetItems(mc.ListItems())
 	
 def activateWindow(id):
 	mc.ActivateWindow(id)
@@ -230,6 +254,9 @@ if ( __name__ == "__main__" ):
 	DIRECTORY_ITEMS_ID = 300
 
 	SETTINGS_DIALOG_ID = 15000
+	PLAY_DIALOG_ID = 15001
+	PLAY_DIALOG_LIST_ID = 100
+	SERIES_LIST_ID = 100
 	CONNECT_DIALOG_ID = 15002
 	
 	secondaryListItems = None

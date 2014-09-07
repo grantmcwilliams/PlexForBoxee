@@ -1,8 +1,7 @@
 <?xml version="1.0"?>
 <window type="dialog" id="15001">
-	<defaultcontrol always="true">301</defaultcontrol>
+	<defaultcontrol always="true">320</defaultcontrol>
 	<allowoverlay>no</allowoverlay>
-	
 	<controls>
 		<!-- LIST ===================================================================-->
 		<control type="list" id="100">
@@ -29,95 +28,351 @@
 		
 		<!-- BACKGROUND =============================================================-->
 		
-		<!-- dim the lower window -->
+		<!-- display art -->
 		<control type="image">
 			<width>1280</width>
 			<height>720</height>
-			<colordiffuse>CC000000</colordiffuse>
-			<texture>com.xmcnuggetx.plexee/shapes/square.png</texture>
+			<texture fallback="com.xmcnuggetx.plexee/defaultbackground.png">$INFO[Container(100).ListItem.Property(image2)]</texture>
 		</control>
 		
+		<control type="image">
+			<width>1280</width>
+			<height>720</height>
+			<texture>com.xmcnuggetx.plexee/shapes/faded.png</texture>
+			<!-- visible>!IsEmpty(Container(100).ListItem.Property(image2))</visible -->
+		</control>
 		
+		<!-- Thumb and media tags (720p etc) ============================================-->
 		<control type="group">
-			<posx>150</posx>
-			<posy>70</posy>
-			<width>880</width>
-			<height>580</height>
-			
-			
-			<!-- play window background -->
+			<height>720</height>
+			<width>250</width>
+		
+			<!-- THUMB ==================================================================-->
 			<control type="image">
-				<width>980</width>
-				<height>580</height>
-				
-				<colordiffuse>FF0E1418</colordiffuse>
-				<texture border="10">com.xmcnuggetx.plexee/shapes/rounded.png</texture>
-			</control>
-			
-			<!-- play window outline -->
-			<control type="image">
-				<width>980</width>
-				<height>580</height>
-				
-				<texture border="10">com.xmcnuggetx.plexee/shapes/rounded_outline.png</texture>
-			</control>
-			
-			<control type="group">
 				<posx>15</posx>
-				<posy>15</posy>
-				<height>550</height>
-				<width>950</width>
+				<posy>20</posy>
+				<width>280</width>
+				<height>300</height>
+				<aspectratio>keep</aspectratio>
+				<texture fallback="com.xmcnuggetx.plexee/default_icons/case.png">$INFO[Container(100).ListItem.Property(image1)]</texture>
+			</control>
 			
-				<!-- THUMB ==================================================================-->
-				
-				<control type="image">
-					<width>450</width>
-					<height>550</height>
-					<aspectratio>keep</aspectratio>
-					<texture fallback="com.xmcnuggetx.plexee/default_icons/case.png">$INFO[Container(100).ListItem.Property(image0)]</texture>
-				</control>
-				
-				<!-- DESCRIPTION ============================================================-->
-				
-				<control type="group">
-					<posx>460</posx>
-					<posy>100</posy>
-					
-					<control type="image">
-						<width>490</width>
-						<height>185</height>
-						
-						<texture border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texture>
-					</control>
-					
-					<control type="textbox" id="300">
-						<posx>5</posx>
-						<posy>5</posy>
-						<width>460</width>
-						<height>175</height>
-						<font>font22</font>
-						<textcolor>FFEEEEEE</textcolor>
-						<pagecontrol>301</pagecontrol>
-						<info>Container(100).ListItem.Property(custom:summary)</info>
-					</control>
+			<control type="label">
+				<posx>50</posx>
+				<posy>330</posy>
+				<width>80</width>
+				<height>30</height>
+				<label>$INFO[Container(100).ListItem.Property(custom:resolution)]</label>
+				<font>font22</font>
+				<textcolor>FFFFFFFF</textcolor>
+			</control>
+			<control type="label">
+				<posx>130</posx>
+				<posy>330</posy>
+				<width>150</width>
+				<height>30</height>
+				<label>$INFO[Container(100).ListItem.Property(custom:channels)]</label>
+				<font>font22</font>
+				<textcolor>FFFFFFFF</textcolor>
+			</control>
+			
+			
+		</control>
+		
+		<!-- Year/rating ==========================================================-->
+		<control type="group">
+			<posx>1080</posx>
+			<height>720</height>
+			<width>200</width>
 
-					<control type="scrollbar" id="301">
-						<posx>470</posx>
-						<posy>5</posy>
-						<width>12</width>
-						<height>175</height>
-						 
-						<texturesliderbackground border="6">com.xmcnuggetx.plexee/scrollbar/background.png</texturesliderbackground>
-						<texturesliderbar border="6">com.xmcnuggetx.plexee/scrollbar/nub.png</texturesliderbar>
-						<texturesliderbarfocus border="6">com.xmcnuggetx.plexee/scrollbar/nub.png</texturesliderbarfocus>
-						 
-						<orientation>vertical</orientation>
-						<showonepage>true</showonepage>
-					</control>
+			<control type="label">
+				<posx>10</posx>
+				<posy>15</posy>
+				<width>200</width>
+				<height>60</height>
+				<aligny>center</aligny>
+				<label>$INFO[Container(100).ListItem.Property(custom:year)]</label>
+				<font>font38</font>
+				<textcolor>FFFFFFFF</textcolor>
+			</control>
+
+			<control type="label">
+				<posx>10</posx>
+				<posy>70</posy>
+				<width>200</width>
+				<height>40</height>
+				<aligny>center</aligny>
+				<label>$INFO[Container(100).ListItem.Property(custom:contentRating)]</label>
+				<font>font22</font>
+				<textcolor>FFFFFFFF</textcolor>
+			</control>
+			
+			<control type="image" id="53">
+				<posx>10</posx>
+				<posy>120</posy>
+				<width>129</width>
+				<height>20</height>
+				<aspectratio>keep</aspectratio>
+				<texture>com.xmcnuggetx.plexee/meta/info_window_icon_rating_star_$INFO[Container(100).ListItem.Property(custom:roundedrating)].png</texture>
+			</control>
+
+		</control>
+		
+		<!-- Title/Tag/Description ====================================================================-->
+		<control type="group">
+			<posx>330</posx>
+			<height>720</height>
+			<width>680</width>
+
+			<!-- TITLE ==================================================================-->
+			<control type="label">
+				<posy>15</posy>
+				<width>680</width>
+				<height>55</height>
+				<aligny>center</aligny>
+				<label>$INFO[Container(100).ListItem.Property(custom:title)]</label>
+				<font>font38</font>
+				<textcolor>FFFFFFFF</textcolor>
+			</control>
+			
+			<!-- DURATION ==================================================================-->
+			<control type="label">
+				<posy>70</posy>
+				<width>680</width>
+				<height>30</height>
+				<aligny>center</aligny>
+				<label>$INFO[Container(100).ListItem.Property(custom:durationformatted)]</label>
+				<font>font22</font>
+				<textcolor>FF999999</textcolor>
+			</control>
+			
+			<!-- GENRE ==================================================================-->
+			<control type="label">
+				<posy>95</posy>
+				<width>680</width>
+				<height>40</height>
+				<aligny>center</aligny>
+				<label>$INFO[Container(100).ListItem.Property(custom:genre)]</label>
+				<font>font20</font>
+				<textcolor>FF999999</textcolor>
+			</control>
+			
+			<!-- TAGLINE ==================================================================-->
+			<control type="label">
+				<posy>145</posy>
+				<width>680</width>
+				<height>40</height>
+				<aligny>center</aligny>
+				<label>$INFO[Container(100).ListItem.Property(custom:playtitle)]</label>
+				<font>font24</font>
+				<textcolor>FF999999</textcolor>
+			</control>
+			
+			<!-- DESCRIPTION ============================================================-->
+			<control type="group">
+				<posy>200</posy>
+				<control type="textbox" id="300">
+					<width>780</width>
+					<height>200</height>
+					<font>font22</font>
+					<textcolor>FFEEEEEE</textcolor>
+					<info>Container(100).ListItem.Property(custom:summary)</info>
+					<autoscroll delay="5000" time="1000" repeat="10000">!Control.HasFocus(300)</autoscroll>
 				</control>
+			</control>
+			
+			<!-- Actors/Director ============================================================-->
+			<control type="label">
+				<posy>440</posy>
+				<width>130</width>
+				<height>40</height>
+				<font>font22</font>
+				<textcolor>FF999999</textcolor>
+				<label>DIRECTOR</label>
+				<visible>!IsEmpty(Container(100).ListItem.Property(custom:director))</visible>
+			</control>
+			<control type="label">
+				<posy>480</posy>
+				<width>130</width>
+				<height>40</height>
+				<font>font22</font>
+				<textcolor>FF999999</textcolor>
+				<label>WRITER</label>
+				<visible>!IsEmpty(Container(100).ListItem.Property(custom:writer))</visible>
+			</control>
+			<control type="label">
+				<posy>520</posy>
+				<width>130</width>
+				<height>40</height>
+				<font>font22</font>
+				<textcolor>FF999999</textcolor>
+				<label>CAST</label>
+				<visible>!IsEmpty(Container(100).ListItem.Property(custom:actors))</visible>
+			</control>
+
+			<control type="label">
+				<posy>440</posy>
+				<posx>130</posx>
+				<width>600</width>
+				<height>40</height>
+				<font>font22</font>
+				<textcolor>FFEEEEEE</textcolor>
+				<label>$INFO[Container(100).ListItem.Property(custom:director)]</label>
+			</control>
+			<control type="label">
+				<posy>480</posy>
+				<posx>130</posx>
+				<width>600</width>
+				<height>40</height>
+				<font>font22</font>
+				<textcolor>FFEEEEEE</textcolor>
+				<label>$INFO[Container(100).ListItem.Property(custom:writer)]</label>
+			</control>
+			<control type="label">
+				<posy>520</posy>
+				<posx>130</posx>
+				<width>600</width>
+				<height>80</height>
+				<font>font22</font>
+				<textcolor>FFEEEEEE</textcolor>
+				<label>$INFO[Container(100).ListItem.Property(custom:actors)]</label>
+				<wrapmultiline>true</wrapmultiline>
 			</control>
 			
 			<!-- BUTTONS ================================================================-->
+			<control type="group">
+				<posy>640</posy>
+				<width>680</width>
+				<height>70</height>
+				
+				<control type="button" id="320">
+					<width>64</width>
+					<height>64</height>
+					<texturefocus>com.xmcnuggetx.plexee/buttons/play_focus.png</texturefocus>
+					<texturenofocus>com.xmcnuggetx.plexee/buttons/play.png</texturenofocus>
+					<onright>310</onright>
+					<onclick lang="python">
+<![CDATA[
+li = mc.GetWindow(15001).GetList(100).GetItem(0)
+machineIdentifier = li.GetProperty("machineidentifier")
+
+#Grab selected subtitle
+#Choosing none actually uses a no_subs.srt file to force them off
+itemNumber = mc.GetWindow(15001).GetList(310).GetFocusedItem()
+subitem = mc.GetWindow(15001).GetList(310).GetItem(itemNumber)
+
+refresh = True
+
+#Check for resume
+viewOffset = li.GetProperty("viewOffset")
+if viewOffset == "" or int(viewOffset) == 0:
+	#no offset just play item
+	manager.playVideoUrl(machineIdentifier, li.GetPath(), subitem)
+else:
+	#determine resume point
+	s = int(int(viewOffset)/1000)
+	m = 0
+	h = 0
+	f = ""
+	if s>=60:
+		m=int(s/60)
+	if m>=60:
+		h=int(m/60)
+		f = str(h) + " hr "
+	s=s-m*60
+	m=m-h*60
+	if m>0:
+		f = f + str(m) + " min "
+	if s>0:
+		f = f + str(s) + " sec "
+
+	#show resume dialog
+	selection = mc.ShowDialogSelect("Resume", ["Resume from "+f, "Start from beginning"])
+	if selection == 0: #resume
+		manager.playVideoUrl(machineIdentifier, li.GetPath(), subitem, int(viewOffset))	
+	elif selection == 1: #from beginning
+		manager.playVideoUrl(machineIdentifier, li.GetPath(), subitem)
+	else:
+		#nothing more to do
+		refresh = False
+	
+#refresh deck on exit
+if refresh:
+	window = mc.GetWindow(14000)
+	myOnDeck = window.GetList(510)
+	myOnDeck.SetItems(manager.getMyOnDeck())
+	
+]]>
+					</onclick>
+				</control>
+
+			<!-- Subtitles ============================================================-->
+			<control type="fixedlist" id="310">
+				<posx>100</posx>
+				<width>400</width>
+				<height>60</height>
+				<orientation>vertical</orientation>
+				<focusposition>0</focusposition>
+				<preloaditems>2</preloaditems>
+				<visible>IntegerGreaterThan(Container(310).NumItems,1)</visible>
+				<onleft>320</onleft>
+
+				<itemlayout width="400" height="40">
+					<control type="label">
+						<posy>15</posy>
+						<posx>5</posx>
+						<width>100</width>
+						<height>40</height>
+						<font>font22</font>
+						<textcolor>FFEEEEEE</textcolor>
+						<label>Subtitles</label>
+					</control>
+					<control type="label">
+						<posy>10</posy>
+						<posx>105</posx>
+						<width>300</width>
+						<height>40</height>
+						<font>font22</font>
+						<aligny>center</aligny>
+						<textcolor>grey</textcolor>
+						<selectedcolor>grey</selectedcolor>
+						<align>left</align>
+						<info>ListItem.Label</info>
+					</control>				
+				</itemlayout>
+				<focusedlayout width="400" height="40">
+					  <control type="image">
+						 <width>400</width>
+						 <height>60</height>
+						 <visible>Control.HasFocus(310)</visible>
+						 <texture border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texture>
+					  </control>
+					<control type="label">
+						<posy>15</posy>
+						<posx>5</posx>
+						<width>100</width>
+						<height>40</height>
+						<font>font22</font>
+						<textcolor>FFEEEEEE</textcolor>
+						<label>Subtitles</label>
+					</control>
+					<control type="label">
+						<posy>10</posy>
+						<posx>105</posx>
+						<width>300</width>
+						<height>40</height>
+						<font>font22</font>
+						<aligny>center</aligny>
+						<textcolor>grey</textcolor>
+						<selectedcolor>grey</selectedcolor>
+						<align>left</align>
+						<info>ListItem.Label</info>
+					</control>				
+				</focusedlayout>
+			</control>
+				
+				
+			</control>
 			
 			
 		</control>

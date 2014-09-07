@@ -2,18 +2,22 @@
 <window type="window" id="14002">
 	<defaultcontrol>200</defaultcontrol>
 	<allowoverlay>no</allowoverlay>
-	<onload lang="Python">loadSecondaryItems()</onload>
+	<onload lang="Python">
+<![CDATA[
+
+loadSecondaryItems()
+
+]]></onload>
 	
 	<controls>		
 		<!-- BACKGROUND =============================================================-->
-		
-		<!-- page background -->
 		<control type="image">
 			<width>1280</width>
 			<height>720</height>
 			<texture>com.xmcnuggetx.plexee/defaultbackground.png</texture>
 		</control>
 		
+		<!-- page background -->
 		<control type="image">
 			<posy>0</posy>
 			<posx>30</posx>
@@ -50,7 +54,7 @@
 			<onup>50</onup>
 			
 			<content type="action">
-				<onclick lang="Python">handleItem(mc.GetFocusedItem(14002, 200))</onclick>
+				<onclick lang="Python">handleItem(mc.GetFocusedItem(14002, 200), 14002)</onclick>
 			</content>
 			
 			<itemlayout height="40">
@@ -112,7 +116,7 @@
 					
 					<aligny>center</aligny>
 					<visible>Control.HasFocus(200)</visible>
-					<label>$INFO[ListItem.Property(custom:title)]</label>
+					<label>$INFO[ListItem.Property(custom:subtitle)]</label>
 				</control>
 			</focusedlayout>
 		</control>
@@ -152,7 +156,7 @@
 			<onup>51</onup>
 			
 			<content type="action">
-				<onclick lang="Python">handleItem(mc.GetFocusedItem(14002, 300))</onclick>
+				<onclick lang="Python">handleItem(mc.GetFocusedItem(14002, 300), 14002)</onclick>
 			</content>
 			
 			<itemlayout width="175" height="300">
@@ -185,7 +189,7 @@
 					<textcolor>66FFFFFF</textcolor>
 					
 					<align>center</align>
-					<label>E$INFO[ListItem.Property(custom:index)] - $INFO[ListItem.Property(custom:title)]</label>
+					<label>E$INFO[ListItem.Property(custom:index)] - $INFO[ListItem.Property(custom:subtitle)]</label>
 				</control>
 			</itemlayout>
 			
@@ -229,7 +233,7 @@
 					<textcolor>FFFFFFFF</textcolor>
 					
 					<align>center</align>
-					<label>E$INFO[ListItem.Property(custom:index)] - $INFO[ListItem.Property(custom:title)]</label>
+					<label>E$INFO[ListItem.Property(custom:index)] - $INFO[ListItem.Property(custom:subtitle)]</label>
 				</control>
 			</focusedlayout>
 		</control>
@@ -303,7 +307,6 @@
 			</focusedlayout>
 		</control>
 
-		
 		<!-- TOP MENU ============================================================== -->
 		
 		<control type="button" id="50">

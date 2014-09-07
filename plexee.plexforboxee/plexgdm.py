@@ -19,7 +19,7 @@ class PlexGDM:
 		self.Msg_PlexGDM = 'M-SEARCH * HTTP/1.0'
 
 	def __printDebug(self, message):
-		print "PlexGDM: %s" % message
+		print "Plexee: %s" % message
 
 	"""
 	getServers
@@ -30,7 +30,7 @@ class PlexGDM:
 	"""
 	def getServers(self, timeoutsec):
 		self.__printDebug("***")
-		self.__printDebug("looking up Plex Media Server")
+		self.__printDebug("Looking up Plex Media Server")
 		self.__printDebug("***")
 		
 		# setup socket for discovery -> multicast message
