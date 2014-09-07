@@ -8,22 +8,16 @@ The code is currently buggy - but the core functionality (browsing videos and st
 
 TODO
 * Fix exit from video bug that crashes the app
-* Add integration with myplex service
 * Fix bugs in photo and music playing areas
-* Remove MyPlex from Settings dialog until it works
-* Change settings dialog so that you can't select MyPlex AND Manual AND Auto discover at the same time.
 
 
 Manual Install Instructions
 ---------------------------
 
-*Option 1*
+*Option 1* - plexforboxee 1.6 in repository (all patches merged as of Sept 6,2014)
 * Navigate to Apps -> Repositories on your Boxee
 * Click the + button on the top right to add the PlexforBoxee repository - http://grantmcwilliams.com/plexforboxee
 * Browse the PlexforBoxee repository and add the Plexee App
-* Manual configure Plexee using the Plexee app
-* Enter the IP address of your Plex Media Server
-* Enter the port number of your Plex Media Server (default is 32400)
 
 
 *Option 2*
