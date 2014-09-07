@@ -2,32 +2,6 @@
 <window type="dialog" id="15001">
 	<defaultcontrol always="true">320</defaultcontrol>
 	<allowoverlay>no</allowoverlay>
-	<onload lang="python">
-<![CDATA[
-#Load art when required
-list = mc.GetWindow(15001).GetList(100)
-li = list.GetItem(0)
-
-server = manager.getServer(li.GetProperty("machineidentifier"));
-
-if li.GetProperty("art") != "":
-	art = li.GetProperty("art")
-	thumb = li.GetProperty("thumb")
-	#Jinxo: On windows this doesn't seem to update the image :(
-	li.SetImage(1, server.getThumbUrl(thumb, 450, 500))
-	li.SetImage(2, server.getThumbUrl(art, 980, 580))
-
-#Build subtitles
-subItems = server.getSubtitles(li.GetPath())
-list = mc.GetWindow(15001).GetList(310)
-list.SetItems(subItems)
-
-#Check if any subtitles to show (1=None option)
-if len(subItems) > 1:
-	mc.GetWindow(15001).GetList(310).SetVisible(True)
-
-]]>
-    </onload>
 	<controls>
 		<!-- LIST ===================================================================-->
 		<control type="list" id="100">
@@ -58,18 +32,14 @@ if len(subItems) > 1:
 		<control type="image">
 			<width>1280</width>
 			<height>720</height>
-			<texture>com.xmcnuggetx.plexee/defaultbackground.png</texture>
-		</control>
-		<control type="image">
-			<width>1280</width>
-			<height>720</height>
-			<texture>$INFO[Container(100).ListItem.Property(image2)]</texture>
+			<texture fallback="com.xmcnuggetx.plexee/defaultbackground.png">$INFO[Container(100).ListItem.Property(image2)]</texture>
 		</control>
 		
 		<control type="image">
 			<width>1280</width>
 			<height>720</height>
 			<texture>com.xmcnuggetx.plexee/shapes/faded.png</texture>
+			<!-- visible>!IsEmpty(Container(100).ListItem.Property(image2))</visible -->
 		</control>
 		
 		<!-- Thumb and media tags (720p etc) ============================================-->
@@ -78,7 +48,7 @@ if len(subItems) > 1:
 			<width>250</width>
 		
 			<!-- THUMB ==================================================================-->
-			<control type="image" id="51">
+			<control type="image">
 				<posx>15</posx>
 				<posy>20</posy>
 				<width>280</width>
@@ -193,7 +163,7 @@ if len(subItems) > 1:
 				<width>680</width>
 				<height>40</height>
 				<aligny>center</aligny>
-				<label>$INFO[Container(100).ListItem.Property(custom:subtitle)]</label>
+				<label>$INFO[Container(100).ListItem.Property(custom:playtitle)]</label>
 				<font>font24</font>
 				<textcolor>FF999999</textcolor>
 			</control>
@@ -219,6 +189,7 @@ if len(subItems) > 1:
 				<font>font22</font>
 				<textcolor>FF999999</textcolor>
 				<label>DIRECTOR</label>
+				<visible>!IsEmpty(Container(100).ListItem.Property(custom:director))</visible>
 			</control>
 			<control type="label">
 				<posy>480</posy>
@@ -227,6 +198,7 @@ if len(subItems) > 1:
 				<font>font22</font>
 				<textcolor>FF999999</textcolor>
 				<label>WRITER</label>
+				<visible>!IsEmpty(Container(100).ListItem.Property(custom:writer))</visible>
 			</control>
 			<control type="label">
 				<posy>520</posy>
@@ -235,6 +207,7 @@ if len(subItems) > 1:
 				<font>font22</font>
 				<textcolor>FF999999</textcolor>
 				<label>CAST</label>
+				<visible>!IsEmpty(Container(100).ListItem.Property(custom:actors))</visible>
 			</control>
 
 			<control type="label">
@@ -341,7 +314,7 @@ if refresh:
 				<orientation>vertical</orientation>
 				<focusposition>0</focusposition>
 				<preloaditems>2</preloaditems>
-				<visible>false</visible>
+				<visible>IntegerGreaterThan(Container(310).NumItems,1)</visible>
 				<onleft>320</onleft>
 
 				<itemlayout width="400" height="40">

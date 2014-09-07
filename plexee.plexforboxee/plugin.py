@@ -148,11 +148,6 @@ def handleItem(listItem, fromWindowId = 0):
 		if nextWindowID == fromWindowId:
 			mc.GetActiveWindow().PushState()
 		
-		#Set any Art
-		li = windowInformation.titleListItems[0]
-		if li.GetProperty("art") != "":
-			li.SetImage(0, li.GetProperty("art"))
-		
 		# secondary items
 		if viewGroup == "secondary":
 			secondaryListItems = windowInformation.childListItems
@@ -170,11 +165,30 @@ def handleItem(listItem, fromWindowId = 0):
 	# Play video
 	elif itemType == "Video":
 		machineIdentifier = listItem.GetProperty("machineidentifier")
-		#manager.playVideoUrl(machineIdentifier, url)
-		#TEMP DISABLE PLAY WINDOW AND JUST PLAY VIDEO
 		windowInformation = manager.getListItems(machineIdentifier, url)
+
+		#Set images for play window
+		server = manager.getServer(listItem.GetProperty("machineIdentifier"));
+		art = listItem.GetProperty("art")
+		thumb = listItem.GetProperty("thumb")
+
+		li = windowInformation.childListItems[0];
+		titleLi = windowInformation.titleListItems[0];
+		
+		if art == "":
+			art = li.GetProperty("art")
+
+		if thumb != "":
+			li.SetImage(1, server.getThumbUrl(thumb, 450, 500))
+			
+		if art != "":
+			li.SetImage(2, server.getThumbUrl(art, 980, 580))
+		
+		#Load any subtitles
+		subItems = server.getSubtitles(listItem.GetPath())
 		mc.ActivateWindow(PLAY_DIALOG_ID)
 		mc.GetWindow(PLAY_DIALOG_ID).GetList(PLAY_DIALOG_LIST_ID).SetItems(windowInformation.childListItems)
+		mc.GetWindow(PLAY_DIALOG_ID).GetList(310).SetItems(subItems)
 	
 	elif itemType == "Track":
 		machineIdentifier = listItem.GetProperty("machineidentifier")

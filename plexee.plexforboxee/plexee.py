@@ -333,11 +333,14 @@ class PlexServer(object):
 		
 		#title, subtitle
 		if mediaType == 'episode':
-			listItem.SetProperty("title",util.cleanString(element.attrib.get("grandparentTitle","")))
-			listItem.SetProperty("subtitle",util.cleanString(element.attrib.get("title","")))
+			epTitle = 'S%s : E%s - %s' % (listItem.GetProperty('parentindex'), listItem.GetProperty('index'), listItem.GetProperty('title'))
+			listItem.SetProperty("playtitle", epTitle)
+			listItem.SetProperty("subtitle", listItem.GetProperty('title'))
+			listItem.SetProperty("title", listItem.GetProperty('grandparenttitle'))
 		else:
-			listItem.SetProperty("title",util.cleanString(element.attrib.get("title","")))
-			listItem.SetProperty("subtitle",util.cleanString(element.attrib.get("tagline","")))
+			listItem.SetProperty("playtitle", listItem.GetProperty('title'))
+			#listItem.SetProperty("title",util.cleanString(element.attrib.get("title","")))
+			listItem.SetProperty("subtitle", listItem.GetProperty('tagline'))
 		
 		#Resolution
 		mediaNode = element.find("Media")
@@ -387,17 +390,11 @@ class PlexServer(object):
 		# Image paths
 
 		if element.attrib.has_key("thumb"):
-			#listItem.SetImage(0, self.getThumbUrl(element.attrib["thumb"], PlexServer.THUMB_WIDTH, PlexServer.THUMB_HEIGHT))
 			if mediaType == 'movie':
 				listItem.SetImage(0, self.getThumbUrl(element.attrib["thumb"], 155, 288))
 			else:
 				listItem.SetImage(0, self.getThumbUrl(element.attrib["thumb"], 288, 155))
-			#listItem.SetImage(1, self.getThumbUrl(element.attrib["thumb"], 450, 500))
 
-		if element.attrib.has_key("art"):
-			listItem.SetProperty("artpath", self.getUrl(fullUrl, element.attrib['art']))
-			#listItem.SetImage(2, self.getThumbUrl(element.attrib["art"], 980, 580))
-		
 		return listItem
 
  	def isAuthenticated(self):
@@ -433,10 +430,10 @@ class PlexServer(object):
 			tree = ElementTree.fromstring(data)
 			titleListItem = self._createListItem(tree, fullUrl)
 			titleListItem.SetProperty("plexeeview", "grid")
-			art = tree.attrib.get("art","")
-			if art:
-				art = self.getThumbUrl(art, 980, 580)
-				titleListItem.SetProperty("art", art)
+			
+			#Set title item art/thumb to display if needed
+			titleListItem.SetProperty("art", tree.attrib.get("art",""))
+			titleListItem.SetProperty("thumb", tree.attrib.get("thumb",""))
 			
 			titleListItems = mc.ListItems()
 			titleListItems.append(titleListItem)
