@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<window type="dialog" id="15003">
+	<defaultcontrol always="true">100</defaultcontrol>
+	<allowoverlay>no</allowoverlay>
+	
+	<controls>
+		<!-- LIST ===================================================================-->
+		<control type="list" id="100">
+			<width>1</width>
+			<height>1</height>
+			
+			<orientation>vertical</orientation>
+			<hitrect x="0" y="0" w="0" h="0" />
+			
+			<itemlayout height="1">
+				<control type="image">
+					<width>1</width>
+					<height>1</height>
+				</control>
+			</itemlayout>
+			
+			<focusedlayout height="1">
+				<control type="image">
+					<width>1</width>
+					<height>1</height>
+				</control>
+			</focusedlayout>
+		</control>
+		
+		<!-- BACKGROUND =============================================================-->
+		
+		<!-- dim the lower window -->
+		<control type="image">
+			<width>1280</width>
+			<height>720</height>
+			<texture>com.xmcnuggetx.plexee/shapes/black.png</texture>
+		</control>
+		
+		<control type="image">
+			<width>1280</width>
+			<height>720</height>
+			<aspectratio>keep</aspectratio>
+			<texture>$INFO[Container(100).ListItem.Property(image0)]</texture>
+		</control>
+		
+	</controls>
+</window>

@@ -130,6 +130,10 @@ class PlexeeManager(object):
 		server = self.getServer(machineIdentifier)
 		if server: server.playMusicUrl(fullUrl)
 
+	def getPhotoList(self, machineIdentifier, fullUrl):
+		server = self.getServer(machineIdentifier)
+		if server: return server.getPhotoList(fullUrl)
+
 	def getServer(self, machineIdentifier):
 		"""
 		Return server from machine identifier
@@ -405,6 +409,27 @@ class PlexServer(object):
 				playlist.Add(li)
 
 			playlist.Play(0)
+		else:
+			return None
+
+	def getPhotoList(self, fullUrl):
+		#photoUrl = self.getUrl(self.getRootUrl(), fullUrl)
+		data = mc.Http().Get(fullUrl)
+		if data:
+			tree = ElementTree.fromstring(data)
+			photoNode = tree.find("Photo")
+			title = photoNode.attrib.get("title", "Plex Track")
+
+			list = mc.ListItems()
+			for part in photoNode.findall("Media/Part"):
+				li = mc.ListItem(mc.ListItem.MEDIA_PICTURE)
+				li.SetTitle(title)
+				li.SetLabel(title)
+				li.SetPath(self.getUrl(self.getRootUrl(), part.attrib.get('key')))
+				li.SetImage(0, self.getUrl(self.getRootUrl(), part.attrib.get('key')))
+				list.append(li)
+
+			return list
 		else:
 			return None
 

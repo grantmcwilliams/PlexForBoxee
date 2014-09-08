@@ -171,6 +171,16 @@ def handleItem(listItem, fromHome = False):
 		machineIdentifier = listItem.GetProperty("machineidentifier")
 		manager.playMusicUrl(machineIdentifier, url)
 	
+	elif itemType == "Photo":
+		machineIdentifier = listItem.GetProperty("machineidentifier")
+		print "Plexee: Photo URL " + url
+		list = manager.getPhotoList(machineIdentifier, url)
+		if list != None:
+			mc.ActivateWindow(PHOTO_DIALOG_ID)
+			mc.GetWindow(PHOTO_DIALOG_ID).GetList(PHOTO_DIALOG_LIST_ID).SetItems(list)
+		else:
+			mc.ShowDialogNotification("Unable to display picture")
+		
 	# Unknown item
 	else:
 		mc.ShowDialogNotification("Unknown itemType: %s" % itemType)
@@ -231,6 +241,8 @@ if ( __name__ == "__main__" ):
 
 	SETTINGS_DIALOG_ID = 15000
 	CONNECT_DIALOG_ID = 15002
+	PHOTO_DIALOG_ID = 15003
+	PHOTO_DIALOG_LIST_ID = 100
 	
 	secondaryListItems = None
 	manager = plexee.PlexeeManager()
