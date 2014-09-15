@@ -2,7 +2,6 @@
 <window type="window" id="14001">
 	<defaultcontrol>200</defaultcontrol>
 	<allowoverlay>no</allowoverlay>
-	<onload lang="Python">loadSecondaryItems()</onload>
 	
 	<controls>		
 		<!-- BACKGROUND =============================================================-->
