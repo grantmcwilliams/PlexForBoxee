@@ -2,12 +2,6 @@
 <window type="window" id="14002">
 	<defaultcontrol>200</defaultcontrol>
 	<allowoverlay>no</allowoverlay>
-	<onload lang="Python">
-<![CDATA[
-
-loadSecondaryItems()
-
-]]></onload>
 	
 	<controls>		
 		<!-- BACKGROUND =============================================================-->
@@ -116,7 +110,7 @@ loadSecondaryItems()
 					
 					<aligny>center</aligny>
 					<visible>Control.HasFocus(200)</visible>
-					<label>$INFO[ListItem.Property(custom:subtitle)]</label>
+					<label>$INFO[ListItem.Property(custom:title)]</label>
 				</control>
 			</focusedlayout>
 		</control>
@@ -189,7 +183,7 @@ loadSecondaryItems()
 					<textcolor>66FFFFFF</textcolor>
 					
 					<align>center</align>
-					<label>E$INFO[ListItem.Property(custom:index)] - $INFO[ListItem.Property(custom:subtitle)]</label>
+					<label>$INFO[ListItem.Property(custom:title)]</label>
 				</control>
 			</itemlayout>
 			
@@ -233,7 +227,7 @@ loadSecondaryItems()
 					<textcolor>FFFFFFFF</textcolor>
 					
 					<align>center</align>
-					<label>E$INFO[ListItem.Property(custom:index)] - $INFO[ListItem.Property(custom:subtitle)]</label>
+					<label>$INFO[ListItem.Property(custom:title)]</label>
 				</control>
 			</focusedlayout>
 		</control>

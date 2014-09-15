@@ -2,7 +2,7 @@
 <window type="dialog" id="15002">
 	<allowoverlay>no</allowoverlay>
 	<zorder>0</zorder>
-	<defaultcontrol always="true">401</defaultcontrol>
+	<defaultcontrol>50</defaultcontrol>
 	<controls>
 		<!-- BACKGROUND =============================================================-->
 		

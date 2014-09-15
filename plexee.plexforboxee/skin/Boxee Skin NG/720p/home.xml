@@ -2,7 +2,6 @@
 <window type="window" id="14000">
 	<defaultcontrol>50</defaultcontrol>
 	<allowoverlay>no</allowoverlay>
-	<onload lang="Python">secondaryListItems = None</onload>
 	
 	<controls>
 		<!-- BACKGROUND =============================================================-->
@@ -448,7 +447,7 @@
 					<itemgap>5</itemgap>
 					
 					<onup>200</onup>
-					<ondown>400</ondown>
+					<ondown>100</ondown>
 					
 					<content type="action">
 						<onclick lang="Python">handleItem(mc.GetFocusedItem(14000, 310), 14000)</onclick>
