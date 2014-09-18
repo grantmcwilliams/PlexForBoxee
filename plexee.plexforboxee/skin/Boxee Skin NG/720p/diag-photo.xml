@@ -1,8 +1,13 @@
 <?xml version="1.0"?>
 <window type="dialog" id="15003">
-	<defaultcontrol always="true">100</defaultcontrol>
+	<defaultcontrol always="true">110</defaultcontrol>
 	<allowoverlay>no</allowoverlay>
-	
+	<onload lang="python">
+<![CDATA[
+window = mc.GetWindow(15003)
+list = window.GetList(100)
+]]>
+	</onload>
 	<controls>
 		<!-- LIST ===================================================================-->
 		<control type="list" id="100">
@@ -26,10 +31,55 @@
 				</control>
 			</focusedlayout>
 		</control>
+		<control type="button" id="110">
+			<posx>0</posx>
+		    <posy>0</posy>
+		    <width>40</width>
+		    <height>40</height>
+			<ondown lang="python">
+<![CDATA[
+rotation = list.GetItem(0).GetProperty('rotation')
+if rotation == "":
+	r = -90
+else:
+	if rotation == "1" or rotation == "-1": rotation = "0"
+	r = int(rotation) - 90
+
+if r<=-360:
+	r=-1
+list.GetItem(0).SetProperty('rotation',str(r))
+]]>
+			</ondown>
+			<onup lang="python">
+<![CDATA[
+rotation = list.GetItem(0).GetProperty('rotation')
+if rotation == "":
+	r = 90
+else:
+	if rotation == "1" or rotation == "-1": rotation = "0"
+	r = int(rotation) + 90
+
+if r>=360:
+	r=1
+list.GetItem(0).SetProperty('rotation',str(r))
+]]>
+			</onup>
+			<onclick lang="python">
+<![CDATA[
+zoom = list.GetItem(0).GetProperty('zoom')
+if zoom == "":
+	z = 1
+else:
+	z = int(zoom) + 1
+if z>5:
+	z=0
+list.GetItem(0).SetProperty('zoom',str(z))
+]]>
+			</onclick>
+		</control>
 		
 		<!-- BACKGROUND =============================================================-->
 		
-		<!-- dim the lower window -->
 		<control type="image">
 			<width>1280</width>
 			<height>720</height>
@@ -37,6 +87,48 @@
 		</control>
 		
 		<control type="image">
+			<animation type="Conditional" reversible="false" condition="StringCompare(Container(100).ListItem.Property(custom:rotation),90)" loop="false">
+				<effect type="rotate" start="0" end="90" time="100" center="auto" loop="false" reversible="false" />
+			</animation>		
+			<animation type="Conditional" reversible="false" condition="StringCompare(Container(100).ListItem.Property(custom:rotation),180)" loop="false">
+				<effect type="rotate" start="90" end="180" time="100" center="auto" loop="false" reversible="false" />
+			</animation>		
+			<animation type="Conditional" reversible="false" condition="StringCompare(Container(100).ListItem.Property(custom:rotation),270)" loop="false">
+				<effect type="rotate" start="180" end="270" time="100" center="auto" loop="false" reversible="false" />
+			</animation>		
+			<animation type="Conditional" reversible="false" condition="StringCompare(Container(100).ListItem.Property(custom:rotation),1)" loop="false">
+				<effect type="rotate" start="270" end="360" time="100" center="auto" loop="false" reversible="false" />
+			</animation>		
+			<animation type="Conditional" reversible="false" condition="StringCompare(Container(100).ListItem.Property(custom:rotation),-90)" loop="false">
+				<effect type="rotate" start="360" end="270" time="100" center="auto" loop="false" reversible="false" />
+			</animation>		
+			<animation type="Conditional" reversible="false" condition="StringCompare(Container(100).ListItem.Property(custom:rotation),-180)" loop="false">
+				<effect type="rotate" start="270" end="180" time="100" center="auto" loop="false" reversible="false" />
+			</animation>		
+			<animation type="Conditional" reversible="false" condition="StringCompare(Container(100).ListItem.Property(custom:rotation),-270)" loop="false">
+				<effect type="rotate" start="180" end="90" time="100" center="auto" loop="false" reversible="false" />
+			</animation>		
+			<animation type="Conditional" reversible="false" condition="StringCompare(Container(100).ListItem.Property(custom:rotation),-1)" loop="false">
+				<effect type="rotate" start="90" end="0" time="100" center="auto" loop="false" reversible="false" />
+			</animation>		
+			<animation type="Conditional" reversible="false" condition="StringCompare(Container(100).ListItem.Property(custom:zoom),0)" loop="false">
+				<effect type="zoom" start="120,120" end="100,100" time="100" center="auto" loop="false" reversible="false" />
+			</animation>		
+			<animation type="Conditional" reversible="false" condition="StringCompare(Container(100).ListItem.Property(custom:zoom),1)" loop="false">
+				<effect type="zoom" start="100,100" end="120,120" time="100" center="auto" loop="false" reversible="false" />
+			</animation>		
+			<animation type="Conditional" reversible="false" condition="StringCompare(Container(100).ListItem.Property(custom:zoom),2)" loop="false">
+				<effect type="zoom" start="120,120" end="140,140" time="100" center="auto" loop="false" reversible="false" />
+			</animation>		
+			<animation type="Conditional" reversible="false" condition="StringCompare(Container(100).ListItem.Property(custom:zoom),3)" loop="false">
+				<effect type="zoom" start="140,140" end="160,160" time="100" center="auto" loop="false" reversible="false" />
+			</animation>		
+			<animation type="Conditional" reversible="false" condition="StringCompare(Container(100).ListItem.Property(custom:zoom),4)" loop="false">
+				<effect type="zoom" start="160,160" end="180,180" time="100" center="auto" loop="false" reversible="false" />
+			</animation>		
+			<animation type="Conditional" reversible="false" condition="StringCompare(Container(100).ListItem.Property(custom:zoom),5)" loop="false">
+				<effect type="zoom" start="180,180" end="200,200" time="100" center="auto" loop="false" reversible="false" />
+			</animation>		
 			<width>1280</width>
 			<height>720</height>
 			<aspectratio>keep</aspectratio>

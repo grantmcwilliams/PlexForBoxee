@@ -32,14 +32,13 @@
 		<control type="image">
 			<width>1280</width>
 			<height>720</height>
-			<texture fallback="com.xmcnuggetx.plexee/defaultbackground.png">$INFO[Container(100).ListItem.Property(image2)]</texture>
+			<texture fallback="com.xmcnuggetx.plexee/defaultbackground.png">$INFO[Container(100).ListItem.Property(image1)]</texture>
 		</control>
 		
 		<control type="image">
 			<width>1280</width>
 			<height>720</height>
 			<texture>com.xmcnuggetx.plexee/shapes/faded.png</texture>
-			<!-- visible>!IsEmpty(Container(100).ListItem.Property(image2))</visible -->
 		</control>
 		
 		<!-- Thumb and media tags (720p etc) ============================================-->
@@ -54,7 +53,7 @@
 				<width>280</width>
 				<height>300</height>
 				<aspectratio>keep</aspectratio>
-				<texture fallback="com.xmcnuggetx.plexee/default_icons/case.png">$INFO[Container(100).ListItem.Property(image1)]</texture>
+				<texture fallback="com.xmcnuggetx.plexee/default_icons/case.png">$INFO[Container(100).ListItem.Property(image0)]</texture>
 			</control>
 			
 			<control type="label">
@@ -163,7 +162,7 @@
 				<width>680</width>
 				<height>40</height>
 				<aligny>center</aligny>
-				<label>$INFO[Container(100).ListItem.Property(custom:playtitle)]</label>
+				<label>$INFO[Container(100).ListItem.Property(custom:tagline)]</label>
 				<font>font24</font>
 				<textcolor>FF999999</textcolor>
 			</control>

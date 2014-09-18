@@ -120,12 +120,56 @@ def loadContent():
 			
 def loadHome():
 	mc.ActivateWindow(getWindowID("home"))
-	
-def handleItem(listItem, fromWindowId = 0):
-	global secondaryListItems
-	itemType = listItem.GetProperty("itemtype")
-	url = listItem.GetPath()
 
+"""
+Play track
+"""
+def _handleTrackItem(listItem):
+	url = listItem.GetPath()
+	machineIdentifier = listItem.GetProperty("machineidentifier")
+	manager.playMusicUrl(machineIdentifier, url)
+
+def _handlePhotoItem(listItem):
+	url = listItem.GetPath()
+	machineIdentifier = listItem.GetProperty("machineidentifier")
+	util.logDebug("Photo URL " + url)
+	list = manager.getPhotoList(machineIdentifier, url)
+	if list != None:
+		mc.ActivateWindow(PHOTO_DIALOG_ID)
+		mc.GetWindow(PHOTO_DIALOG_ID).GetList(PHOTO_DIALOG_LIST_ID).SetItems(list)
+	else:
+		mc.ShowDialogNotification("Unable to display picture")
+
+	
+"""
+Show play screen for video item
+"""
+def _handleVideoItem(listItem):
+	mc.ShowDialogWait()
+	machineIdentifier = listItem.GetProperty("machineidentifier")
+	#Create a new list item with the additional video data
+	server = manager.getServer(listItem.GetProperty("machineIdentifier"));
+	
+	#Get additional meta data for item to play
+	li = server.getVideoItem(listItem)
+	listItems = mc.ListItems()
+	listItems.append(li)
+
+	#Load any subtitles
+	subItems = server.getSubtitles(li.GetPath())
+	
+	#Show play window
+	mc.ActivateWindow(PLAY_DIALOG_ID)
+	mc.GetWindow(PLAY_DIALOG_ID).GetList(PLAY_DIALOG_LIST_ID).SetItems(listItems)
+	mc.GetWindow(PLAY_DIALOG_ID).GetList(310).SetItems(subItems)
+	mc.HideDialogWait()
+
+"""
+Handles clicking on a menu option
+"""
+def _handleMenuItem(listItem, fromWindowId):
+	url = listItem.GetPath()
+	
 	# Handle search items
 	if listItem.GetProperty("search") == "1":
 		search = mc.ShowDialogKeyboard(listItem.GetProperty("prompt"), "", False)
@@ -134,81 +178,69 @@ def handleItem(listItem, fromWindowId = 0):
 		else:
 			return
 
-	# Load screen of items
-	if itemType == "Directory":
-		mc.ShowDialogWait()
-		
-		# load next screen information
-		machineIdentifier = listItem.GetProperty("machineidentifier")
-		windowInformation = manager.getListItems(machineIdentifier, url)
-		viewGroup = windowInformation.titleListItems[0].GetProperty("viewgroup")
-		nextWindowID = getWindowID(viewGroup)
-		
-		# save the state if needed
-		if nextWindowID == fromWindowId:
+	mc.ShowDialogWait()
+	machineIdentifier = listItem.GetProperty("machineidentifier")
+	windowInformation = manager.getListItems(machineIdentifier, url)
+	viewGroup = windowInformation.titleListItems[0].GetProperty("viewgroup")
+	nextWindowID = getWindowID(viewGroup)
+	window = mc.GetActiveWindow()
+	
+	if fromWindowId != getWindowID('home'):
+		if not (listItem.GetProperty('type') == "" and listItem.GetProperty('secondary') == ""):
+			#Not a menu item with no secondary elements
 			mc.GetActiveWindow().PushState()
-		
-		# secondary items
-		if viewGroup == "secondary":
-			secondaryListItems = windowInformation.childListItems
-			if fromWindowId == getWindowID('home'):
-				handleItem(windowInformation.childListItems[0])
-			else:
-				#clearItems()
-				window = mc.GetActiveWindow()
-				showWindowInformation(window, windowInformation)
-		else:
-			# start the new window
+
+	if viewGroup == "secondary":
+		menuItems = windowInformation.childListItems
+		if fromWindowId == getWindowID('home'):
+			#Clicked on Movie etc.. from home menu
+			#Grab the menu items - and go to the first one
+			url = menuItems[0].GetPath()
+			windowInformation = manager.getListItems(machineIdentifier, url)
 			window = activateWindow(nextWindowID)
-			showWindowInformation(window, windowInformation)
-
-	# Play video
-	elif itemType == "Video":
-		machineIdentifier = listItem.GetProperty("machineidentifier")
-		windowInformation = manager.getListItems(machineIdentifier, url)
-
-		#Set images for play window
-		server = manager.getServer(listItem.GetProperty("machineIdentifier"));
-		art = listItem.GetProperty("art")
-		thumb = listItem.GetProperty("thumb")
-
-		li = windowInformation.childListItems[0];
-		titleLi = windowInformation.titleListItems[0];
+			updateMenuItems(window, menuItems)
+			updateWindowItems(window, windowInformation)
 		
-		if art == "":
-			art = li.GetProperty("art")
-
-		if thumb != "":
-			li.SetImage(1, server.getThumbUrl(thumb, 450, 500))
-			
-		if art != "":
-			li.SetImage(2, server.getThumbUrl(art, 980, 580))
+		else:
+			#Only found more menu items, so update them
+			updateMenuItems(window, menuItems)
+	
+	else:
+		#Found a list of items to display
+		if fromWindowId == getWindowID('home'):
+			#We need a window to update
+			window = activateWindow(nextWindowID)
+			#This means we have no menu items
 		
-		#Load any subtitles
-		subItems = server.getSubtitles(listItem.GetPath())
-		mc.ActivateWindow(PLAY_DIALOG_ID)
-		mc.GetWindow(PLAY_DIALOG_ID).GetList(PLAY_DIALOG_LIST_ID).SetItems(windowInformation.childListItems)
-		mc.GetWindow(PLAY_DIALOG_ID).GetList(310).SetItems(subItems)
+		updateWindowItems(window, windowInformation)
+		
+	mc.HideDialogWait()
+
+	
+"""
+Determines the appropriate action for a plex item (a url)
+"""	
+def handleItem(listItem, fromWindowId = 0):
+	itemType = listItem.GetProperty("itemtype")
+
+	if itemType == "Video":
+		_handleVideoItem(listItem)
 	
 	elif itemType == "Track":
-		machineIdentifier = listItem.GetProperty("machineidentifier")
-		manager.playMusicUrl(machineIdentifier, url)
+		_handleTrackItem(listItem)
 	
+	#Clicked on directory item
+	elif itemType == "Directory":
+		_handleMenuItem(listItem, fromWindowId)
+		
 	elif itemType == "Photo":
-		machineIdentifier = listItem.GetProperty("machineidentifier")
-		print "Plexee: Photo URL " + url
-		list = manager.getPhotoList(machineIdentifier, url)
-		if list != None:
-			mc.ActivateWindow(PHOTO_DIALOG_ID)
-			mc.GetWindow(PHOTO_DIALOG_ID).GetList(PHOTO_DIALOG_LIST_ID).SetItems(list)
-		else:
-			mc.ShowDialogNotification("Unable to display picture")
+		_handlePhotoItem(listItem)
 		
 	# Unknown item
 	else:
 		mc.ShowDialogNotification("Unknown itemType: %s" % itemType)
 
-	mc.HideDialogWait()
+
 
 def clearItems():
 	window = mc.GetActiveWindow()
@@ -218,33 +250,21 @@ def clearItems():
 	window.GetList(DIRECTORY_ITEMS_ID).SetItems(blankItems)
 	#if clearSecondary: window.GetList(DIRECTORY_SECONDARY_ID).SetItems(blankItems)
 
-def showWindowInformation(window, windowInformation):
-	viewGroup = windowInformation.titleListItems[0].GetProperty("viewgroup")
-
-	if viewGroup == "secondary":
-		window.GetList(DIRECTORY_SECONDARY_ID).SetItems(windowInformation.childListItems)
-	else:
-		window.GetList(DIRECTORY_TITLE_ID).SetItems(windowInformation.titleListItems)
-		window.GetList(DIRECTORY_ITEMS_ID).SetItems(windowInformation.childListItems)
-		if len(windowInformation.childListItems) > 0 and windowInformation.childListItems[0].GetLabel() != "":
-			mc.ShowDialogNotification(windowInformation.childListItems[0].GetLabel())
-		window.GetControl(DIRECTORY_ITEMS_ID).SetFocus()
+def updateMenuItems(window, menuItems):
+	window.GetList(DIRECTORY_SECONDARY_ID).SetItems(menuItems)
+	
+def updateWindowItems(window, windowInformation):
+	window.GetList(DIRECTORY_TITLE_ID).SetItems(windowInformation.titleListItems)
+	window.GetList(DIRECTORY_ITEMS_ID).SetItems(windowInformation.childListItems)
+	if len(windowInformation.childListItems) > 0 and windowInformation.childListItems[0].GetLabel() != "":
+		mc.ShowDialogNotification(windowInformation.childListItems[0].GetLabel())
+	window.GetControl(DIRECTORY_ITEMS_ID).SetFocus()
 
 def getActiveWindowID():
 	return mc.GetActiveWindow().GetEdit(1).GetText()
 		
 def getWindowID(view):
 	return WINDOW_IDS.get(view, 14001)
-	
-def loadSecondaryItems():
-	global secondaryListItems
-	
-	if secondaryListItems:
-		#mc.ShowDialogNotification("has secondary")
-		mc.GetActiveWindow().GetList(200).SetItems(secondaryListItems)
-	else:
-		#mc.ShowDialogNotification("no secondary")
-		mc.GetActiveWindow().GetList(200).SetItems(mc.ListItems())
 	
 def activateWindow(id):
 	mc.ActivateWindow(id)
@@ -270,11 +290,13 @@ if ( __name__ == "__main__" ):
 	CONNECT_DIALOG_ID = 15002
 	PHOTO_DIALOG_ID = 15003
 	PHOTO_DIALOG_LIST_ID = 100
-	
-	secondaryListItems = None
+
 	manager = plexee.PlexeeManager()
 	app = mc.GetApp()
 	config = app.GetLocalConfig()
+	
+	#Jinxo: Set debug on to get all debug messages
+	#config.SetValue("debug", "1")
 	
 	#default to autodiscover on first start of application
 	if not config.GetValue("usemanual") and not config.GetValue("usediscover") and not config.GetValue("usemyplex"):
