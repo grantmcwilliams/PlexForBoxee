@@ -4,17 +4,16 @@ Originally created by Mike McMullin (xmcnuggetx)  and currently being developed 
 
 ---
 
-The code is currently buggy - but the core functionality (browsing videos and streaming) works. As of February 23, 2014 the app is installable from the plexforboxee custom app repository outlined below. 
+The code is not complete - but the core functionality (browsing videos and streaming) works. As of February 23, 2014 the app is installable from the plexforboxee custom app repository outlined below. 
 
 TODO
-* Fix exit from video bug that crashes the app
-* Fix bugs in photo and music playing areas
+* Add playing videos from Queue
 
 
 Manual Install Instructions
 ---------------------------
 
-*Option 1* - plexforboxee 1.6 in repository (all patches merged as of Sept 6,2014)
+*Option 1* - plexforboxee 1.9 in repository (all patches merged as of Oct 11, 2014)
 * Navigate to Apps -> Repositories on your Boxee
 * Click the + button on the top right to add the PlexforBoxee repository - http://grantmcwilliams.com/plexforboxee
 * Browse the PlexforBoxee repository and add the Plexee App
