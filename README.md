@@ -15,7 +15,7 @@ TODO
 Manual Install Instructions
 ---------------------------
 
-*Option 1* - plexforboxee 1.9 in repository (all patches merged as of Oct 11, 2014)
+*Option 1* - plexforboxee 1.10 in repository (all patches merged as of Oct 26, 2014)
 * Navigate to Apps -> Repositories on your Boxee
 * Click the + button on the top right to add the PlexforBoxee repository - http://grantmcwilliams.com/plexforboxee
 * Browse the PlexforBoxee repository and add the Plexee App
