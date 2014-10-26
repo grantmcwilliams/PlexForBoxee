@@ -8,7 +8,7 @@ The code is not complete - but the core functionality (browsing videos and strea
 
 TODO
 * Add playing videos from Queue
-* Get photos to work (unknown photo type)
+* Get photos to work (photo patches in testing now)
 * Get Video Channels to work (error 404)
 
 
