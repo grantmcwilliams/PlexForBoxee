@@ -128,6 +128,16 @@ def _handleTrackItem(listItem):
 	url = listItem.GetPath()
 	machineIdentifier = listItem.GetProperty("machineidentifier")
 	manager.playMusicUrl(machineIdentifier, url)
+
+def _handlePhotoItem(listItem):
+	list = manager.getPhotoList(listItem)
+	if list != None:
+		mc.ActivateWindow(PHOTO_DIALOG_ID)
+		mc.GetWindow(PHOTO_DIALOG_ID).GetList(PHOTO_DIALOG_LIST_ID).SetItems(list)
+		mc.GetWindow(PHOTO_DIALOG_ID).GetList(PHOTO_DIALOG_LIST_ID).SetFocusedItem(util.getIndex(listItem, list))
+	else:
+		mc.ShowDialogNotification("Unable to display picture")
+
 	
 """
 Show play screen for video item
@@ -221,6 +231,9 @@ def handleItem(listItem, fromWindowId = 0):
 	elif itemType == "Directory":
 		_handleMenuItem(listItem, fromWindowId)
 		
+	elif itemType == "Photo":
+		_handlePhotoItem(listItem)
+		
 	# Unknown item
 	else:
 		mc.ShowDialogNotification("Unknown itemType: %s" % itemType)
@@ -273,7 +286,9 @@ if ( __name__ == "__main__" ):
 	PLAY_DIALOG_LIST_ID = 100
 	SERIES_LIST_ID = 100
 	CONNECT_DIALOG_ID = 15002
-	
+	PHOTO_DIALOG_ID = 15003
+	PHOTO_DIALOG_LIST_ID = 100
+
 	manager = plexee.PlexeeManager()
 	app = mc.GetApp()
 	config = app.GetLocalConfig()

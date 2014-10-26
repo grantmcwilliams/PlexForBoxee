@@ -138,6 +138,11 @@ class PlexeeManager(object):
 		server = self.getServer(machineIdentifier)
 		if server: server.playMusicUrl(fullUrl)
 
+	def getPhotoList(self, listItem):
+		machineIdentifier = listItem.GetProperty("machineidentifier")
+		server = self.getServer(machineIdentifier)
+		if server: return server.getPhotoList(listItem)
+
 	def getServer(self, machineIdentifier):
 		"""
 		Return server from machine identifier
@@ -418,7 +423,7 @@ class PlexServer(object):
 		if element.attrib.has_key("key"):
 			listItem.SetPath(self.getUrl(fullUrl, element.attrib["key"]))
 	
-		attribs = ['viewGroup','title','key','thumb','type','title1','title2','size','index','search','secondary']
+		attribs = ['viewGroup','title','key','thumb','type','title1','title2','size','index','search','secondary','parentKey']
 		for attribute in attribs:
 			if element.attrib.has_key(attribute):
 				#util.logDebug('Property [%s]=[%s]' % (attribute.lower(), util.cleanString(element.attrib[attribute])))
@@ -675,6 +680,37 @@ class PlexServer(object):
 				playlist.Add(li)
 
 			playlist.Play(0)
+		else:
+			return None
+
+	"""
+	Return a list of all child images
+	"""
+	def getPhotoList(self, listItem):
+		#photoUrl = self.getUrl(self.getRootUrl(), fullUrl)
+		url = self.getUrl(self.getRootUrl(), listItem.GetProperty('parentKey'))
+		data = mc.Http().Get(url+'/children')
+		if data:
+			list = mc.ListItems()
+			tree = ElementTree.fromstring(data)
+			for photoNode in tree.findall("Photo"):
+				title = photoNode.attrib.get("title", "Plex Photo")
+				key = photoNode.attrib.get('key')
+
+				for part in photoNode.findall("Media/Part"):
+					li = mc.ListItem(mc.ListItem.MEDIA_PICTURE)
+					li.SetProperty('key',key)
+					li.SetTitle(title)
+					li.SetLabel(title)
+					li.SetPath(self.getUrl(self.getRootUrl(), key))
+					li.SetProperty('rotation','')
+					li.SetProperty('zoom','')
+					#Resize images
+					li.SetImage(0, self.getThumbUrl(part.attrib.get('key'),1280,1280))
+					#li.SetImage(0, self.getUrl(self.getRootUrl(), part.attrib.get('key')))
+					list.append(li)
+
+			return list
 		else:
 			return None
 
