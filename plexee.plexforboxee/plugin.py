@@ -130,13 +130,11 @@ def _handleTrackItem(listItem):
 	manager.playMusicUrl(machineIdentifier, url)
 
 def _handlePhotoItem(listItem):
-	url = listItem.GetPath()
-	machineIdentifier = listItem.GetProperty("machineidentifier")
-	util.logDebug("Photo URL " + url)
-	list = manager.getPhotoList(machineIdentifier, url)
+	list = manager.getPhotoList(listItem)
 	if list != None:
 		mc.ActivateWindow(PHOTO_DIALOG_ID)
 		mc.GetWindow(PHOTO_DIALOG_ID).GetList(PHOTO_DIALOG_LIST_ID).SetItems(list)
+		mc.GetWindow(PHOTO_DIALOG_ID).GetList(PHOTO_DIALOG_LIST_ID).SetFocusedItem(util.getIndex(listItem, list))
 	else:
 		mc.ShowDialogNotification("Unable to display picture")
 

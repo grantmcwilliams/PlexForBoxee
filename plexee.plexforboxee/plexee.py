@@ -138,9 +138,10 @@ class PlexeeManager(object):
 		server = self.getServer(machineIdentifier)
 		if server: server.playMusicUrl(fullUrl)
 
-	def getPhotoList(self, machineIdentifier, fullUrl):
+	def getPhotoList(self, listItem):
+		machineIdentifier = listItem.GetProperty("machineidentifier")
 		server = self.getServer(machineIdentifier)
-		if server: return server.getPhotoList(fullUrl)
+		if server: return server.getPhotoList(listItem)
 
 	def getServer(self, machineIdentifier):
 		"""
@@ -422,7 +423,7 @@ class PlexServer(object):
 		if element.attrib.has_key("key"):
 			listItem.SetPath(self.getUrl(fullUrl, element.attrib["key"]))
 	
-		attribs = ['viewGroup','title','key','thumb','type','title1','title2','size','index','search','secondary']
+		attribs = ['viewGroup','title','key','thumb','type','title1','title2','size','index','search','secondary','parentKey']
 		for attribute in attribs:
 			if element.attrib.has_key(attribute):
 				#util.logDebug('Property [%s]=[%s]' % (attribute.lower(), util.cleanString(element.attrib[attribute])))
@@ -682,26 +683,32 @@ class PlexServer(object):
 		else:
 			return None
 
-	def getPhotoList(self, fullUrl):
+	"""
+	Return a list of all child images
+	"""
+	def getPhotoList(self, listItem):
 		#photoUrl = self.getUrl(self.getRootUrl(), fullUrl)
-		data = mc.Http().Get(fullUrl)
+		url = self.getUrl(self.getRootUrl(), listItem.GetProperty('parentKey'))
+		data = mc.Http().Get(url+'/children')
 		if data:
-			tree = ElementTree.fromstring(data)
-			photoNode = tree.find("Photo")
-			title = photoNode.attrib.get("title", "Plex Track")
-
 			list = mc.ListItems()
-			for part in photoNode.findall("Media/Part"):
-				li = mc.ListItem(mc.ListItem.MEDIA_PICTURE)
-				li.SetTitle(title)
-				li.SetLabel(title)
-				li.SetPath(self.getUrl(self.getRootUrl(), part.attrib.get('key')))
-				li.SetProperty('rotation','')
-				li.SetProperty('zoom','')
-				#Resize images
-				li.SetImage(0, self.getThumbUrl(part.attrib.get('key'),1280,720))
-				#li.SetImage(0, self.getUrl(self.getRootUrl(), part.attrib.get('key')))
-				list.append(li)
+			tree = ElementTree.fromstring(data)
+			for photoNode in tree.findall("Photo"):
+				title = photoNode.attrib.get("title", "Plex Photo")
+				key = photoNode.attrib.get('key')
+
+				for part in photoNode.findall("Media/Part"):
+					li = mc.ListItem(mc.ListItem.MEDIA_PICTURE)
+					li.SetProperty('key',key)
+					li.SetTitle(title)
+					li.SetLabel(title)
+					li.SetPath(self.getUrl(self.getRootUrl(), key))
+					li.SetProperty('rotation','')
+					li.SetProperty('zoom','')
+					#Resize images
+					li.SetImage(0, self.getThumbUrl(part.attrib.get('key'),1280,1280))
+					#li.SetImage(0, self.getUrl(self.getRootUrl(), part.attrib.get('key')))
+					list.append(li)
 
 			return list
 		else:

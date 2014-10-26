@@ -36,3 +36,11 @@ def formatEpisodeTitle(season, episode, title):
 		return 'E%s - %s' % (str(episode), title)
 	else:
 		return 'S%s:E%s - %s' % (str(season), str(episode), title)
+
+def getIndex(listItem, list):
+	result = -1
+	for l in list:
+		result = result + 1
+		if l.GetProperty('key') == listItem.GetProperty('key'):
+			return result
+	return result
