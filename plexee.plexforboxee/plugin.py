@@ -54,10 +54,10 @@ def initPlexee():
 
 		#try GDM auto discovery
 		if config.GetValue("usediscover"):
-			discoverTime = config.GetValue("discoverTime")
+			discoverTime = config.GetValue("discovertime")
 			if not discoverTime or not discoverTime.isdigit():
 				#Set default value to 1 seconds timeout for auto-discovery
-				config.SetValue("discoverTime", "1")
+				config.SetValue("discovertime", "1")
 				discoverTime = 1
 			discoverTime = int(discoverTime)
 				
@@ -154,12 +154,14 @@ def _handleVideoItem(listItem):
 	listItems.append(li)
 
 	#Load any subtitles
-	subItems = server.getSubtitles(li.GetPath())
+	mediaOptions = server.getMediaOptions(li.GetPath())
 	
 	#Show play window
 	mc.ActivateWindow(PLAY_DIALOG_ID)
 	mc.GetWindow(PLAY_DIALOG_ID).GetList(PLAY_DIALOG_LIST_ID).SetItems(listItems)
-	mc.GetWindow(PLAY_DIALOG_ID).GetList(310).SetItems(subItems)
+	mc.GetWindow(PLAY_DIALOG_ID).GetList(310).SetItems(mediaOptions.subtitleItems)
+	mc.GetWindow(PLAY_DIALOG_ID).GetList(330).SetItems(mediaOptions.audioItems)
+	mc.GetWindow(PLAY_DIALOG_ID).GetList(340).SetItems(mediaOptions.mediaItems)
 	mc.HideDialogWait()
 
 """
@@ -180,10 +182,14 @@ def _handleMenuItem(listItem, fromWindowId):
 	machineIdentifier = listItem.GetProperty("machineidentifier")
 	windowInformation = manager.getListItems(machineIdentifier, url)
 	viewGroup = windowInformation.titleListItems[0].GetProperty("viewgroup")
+	
+	if config.GetValue('debug') == '1':
+		mc.ShowDialogNotification("ViewGroup: " + viewGroup + ", FromWindowId:" + str(fromWindowId))
+		
 	nextWindowID = getWindowID(viewGroup)
 	window = mc.GetActiveWindow()
 	
-	if fromWindowId != getWindowID('home'):
+	if fromWindowId != getWindowID('home') and fromWindowId == nextWindowID:
 		if not (listItem.GetProperty('type') == "" and listItem.GetProperty('secondary') == ""):
 			#Not a menu item with no secondary elements
 			mc.GetActiveWindow().PushState()
@@ -205,7 +211,8 @@ def _handleMenuItem(listItem, fromWindowId):
 	
 	else:
 		#Found a list of items to display
-		if fromWindowId == getWindowID('home'):
+		if nextWindowID != getWindowID('home'):
+		#if fromWindowId == getWindowID('home'):
 			#We need a window to update
 			window = activateWindow(nextWindowID)
 			#This means we have no menu items
@@ -274,7 +281,8 @@ if ( __name__ == "__main__" ):
 	WINDOW_IDS = {
 		"home": 14000,
 		"default": 14001,
-		"episode": 14002
+		"episode": 14002,
+		"track": 14003
 	}
 
 	DIRECTORY_TITLE_ID = 100
@@ -294,7 +302,7 @@ if ( __name__ == "__main__" ):
 	config = app.GetLocalConfig()
 	
 	#Jinxo: Set debug on to get all debug messages
-	#config.SetValue("debug", "1")
+	config.SetValue("debug", "")
 	
 	#default to autodiscover on first start of application
 	if not config.GetValue("usemanual") and not config.GetValue("usediscover") and not config.GetValue("usemyplex"):
@@ -305,6 +313,9 @@ if ( __name__ == "__main__" ):
 	if not discoverTime or not discoverTime.isdigit():
 		config.SetValue("discovertime", "1")
 	
+	config.SetValue("started", "0")
+	
 	#startup
-	loadHome()
-	initPlexee()
+	mc.ActivateWindow(14010)
+	
+

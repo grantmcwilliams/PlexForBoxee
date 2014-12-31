@@ -2,6 +2,44 @@
 <window type="dialog" id="15001">
 	<defaultcontrol always="true">320</defaultcontrol>
 	<allowoverlay>no</allowoverlay>
+	<onload lang="python">
+<![CDATA[
+window = mc.GetWindow(15001)
+subtitleList = window.GetList(310)
+playButton = window.GetButton(320)
+audioList = window.GetList(330)
+mediaList = window.GetList(340)
+items = mediaList.GetItems()
+if len(items) <= 1:
+	mediaList.SetEnabled(False)
+else:
+	mediaList.SetEnabled(True)
+
+playItem = mc.GetWindow(15001).GetList(100).GetItem(0)
+machineIdentifier = playItem.GetProperty("machineidentifier")
+server = manager.getServer(machineIdentifier)
+
+def checkMediaSwitch():
+	#Switched media option
+	#Grap any subtitles and audio for this media
+	currentMediaIndex = playItem.GetProperty('currentMediaIndex')
+	if currentMediaIndex:
+		currentMediaIndex = int(currentMediaIndex)
+	else:
+		playItem.SetProperty('currentMediaIndex','0')
+		currentMediaIndex = 0
+	
+	if mediaList.GetFocusedItem() != currentMediaIndex:
+		playItem.SetProperty('currentMediaIndex', str(mediaList.GetFocusedItem()))
+		currentMediaIndex = mediaList.GetFocusedItem()
+		
+		util.logDebug("Media switched - reloading subs/audio streams")
+		mediaOptions = server.getMediaOptions(playItem.GetPath(), mediaList.GetFocusedItem())
+		subtitleList.SetItems(mediaOptions.subtitleItems)
+		audioList.SetItems(mediaOptions.audioItems)
+
+]]>
+	</onload>
 	<controls>
 		<!-- LIST ===================================================================-->
 		<control type="list" id="100">
@@ -237,36 +275,51 @@
 				<label>$INFO[Container(100).ListItem.Property(custom:actors)]</label>
 				<wrapmultiline>true</wrapmultiline>
 			</control>
+		</control>
+		<!-- BUTTONS ================================================================-->
+		<control type="group">
+			<posx>0</posx>
+			<posy>640</posy>
+			<width>1280</width>
+			<height>70</height>
 			
-			<!-- BUTTONS ================================================================-->
-			<control type="group">
-				<posy>640</posy>
-				<width>680</width>
-				<height>70</height>
-				
-				<control type="button" id="320">
-					<width>64</width>
-					<height>64</height>
-					<texturefocus>com.xmcnuggetx.plexee/buttons/play_focus.png</texturefocus>
-					<texturenofocus>com.xmcnuggetx.plexee/buttons/play.png</texturenofocus>
-					<onright>310</onright>
-					<onclick lang="python">
+			<control type="button" id="320">
+				<posx>10</posx>
+				<width>64</width>
+				<height>64</height>
+				<texturefocus>com.xmcnuggetx.plexee/buttons/play_focus.png</texturefocus>
+				<texturenofocus>com.xmcnuggetx.plexee/buttons/play.png</texturenofocus>
+				<onright lang="python">
 <![CDATA[
-li = mc.GetWindow(15001).GetList(100).GetItem(0)
-machineIdentifier = li.GetProperty("machineidentifier")
+if mediaList.IsEnabled():
+	mediaList.SetFocus()
+else:
+	subtitleList.SetFocus()
+]]>
+				</onright>
+				<onclick lang="python">
+<![CDATA[
+#Set the play options for media, subtitles and audio
+subtitleIndex = subtitleList.GetFocusedItem()
+if (subtitleIndex):
+	subtitleIndex = int(subtitleList.GetItem(subtitleIndex).GetProperty("id"))
+else:
+	subtitleIndex = 0
 
-#Grab selected subtitle
-#Choosing none actually uses a no_subs.srt file to force them off
-itemNumber = mc.GetWindow(15001).GetList(310).GetFocusedItem()
-subitem = mc.GetWindow(15001).GetList(310).GetItem(itemNumber)
+audioIndex = audioList.GetFocusedItem()
+if (audioIndex):
+	audioIndex = int(audioList.GetItem(audioIndex).GetProperty("id"))
+else:
+	audioIndex = 0
 
+mediaIndex = mediaList.GetFocusedItem()
 refresh = True
 
 #Check for resume
-viewOffset = li.GetProperty("viewOffset")
+viewOffset = playItem.GetProperty("viewOffset")
 if viewOffset == "" or int(viewOffset) == 0:
 	#no offset just play item
-	manager.playVideoUrl(machineIdentifier, li.GetPath(), subitem)
+	server.playVideoUrl(playItem.GetPath(), mediaIndex, subtitleIndex, audioIndex)
 else:
 	#determine resume point
 	s = int(int(viewOffset)/1000)
@@ -288,92 +341,250 @@ else:
 	#show resume dialog
 	selection = mc.ShowDialogSelect("Resume", ["Resume from "+f, "Start from beginning"])
 	if selection == 0: #resume
-		manager.playVideoUrl(machineIdentifier, li.GetPath(), subitem, int(viewOffset))	
+		server.playVideoUrl(playItem.GetPath(),  mediaIndex, subtitleIndex, audioIndex, int(viewOffset))	
 	elif selection == 1: #from beginning
-		manager.playVideoUrl(machineIdentifier, li.GetPath(), subitem)
+		server.playVideoUrl(playItem.GetPath(),  mediaIndex, subtitleIndex, audioIndex)
 	else:
 		#nothing more to do
 		refresh = False
-	
+
 #refresh deck on exit
 if refresh:
-	window = mc.GetWindow(14000)
-	myOnDeck = window.GetList(510)
+	homeWindow = mc.GetWindow(14000)
+	myOnDeck = homeWindow.GetList(510)
 	myOnDeck.SetItems(manager.getMyOnDeck())
-	
+
 ]]>
-					</onclick>
+				</onclick>
+			</control>
+
+		<!-- Media ============================================================-->
+		<control type="fixedlist" id="340">
+			<posx>100</posx>
+			<width>400</width>
+			<height>60</height>
+			<orientation>vertical</orientation>
+			<focusposition>0</focusposition>
+			<preloaditems>2</preloaditems>
+			<!--visible>IntegerGreaterThan(Container(340).NumItems,1)</visible-->
+			<onleft lang="python">
+<![CDATA[
+checkMediaSwitch()
+playButton.SetFocus()
+]]>
+			</onleft>
+			<onright lang="python">
+<![CDATA[
+checkMediaSwitch()
+if subtitleList.IsVisible():
+	subtitleList.SetFocus()
+elif audioList.IsVisible():
+	audioList.SetFocus()
+]]>
+			</onright>
+			
+			<itemlayout width="400" height="40">
+				<control type="label">
+					<posy>15</posy>
+					<posx>5</posx>
+					<width>100</width>
+					<height>40</height>
+					<font>font22</font>
+					<textcolor>FFEEEEEE</textcolor>
+					<label>Media</label>
 				</control>
-
-			<!-- Subtitles ============================================================-->
-			<control type="fixedlist" id="310">
-				<posx>100</posx>
-				<width>400</width>
-				<height>60</height>
-				<orientation>vertical</orientation>
-				<focusposition>0</focusposition>
-				<preloaditems>2</preloaditems>
-				<visible>IntegerGreaterThan(Container(310).NumItems,1)</visible>
-				<onleft>320</onleft>
-
-				<itemlayout width="400" height="40">
-					<control type="label">
-						<posy>15</posy>
-						<posx>5</posx>
-						<width>100</width>
-						<height>40</height>
-						<font>font22</font>
-						<textcolor>FFEEEEEE</textcolor>
-						<label>Subtitles</label>
-					</control>
-					<control type="label">
-						<posy>10</posy>
-						<posx>105</posx>
-						<width>300</width>
-						<height>40</height>
-						<font>font22</font>
-						<aligny>center</aligny>
-						<textcolor>grey</textcolor>
-						<selectedcolor>grey</selectedcolor>
-						<align>left</align>
-						<info>ListItem.Label</info>
-					</control>				
-				</itemlayout>
-				<focusedlayout width="400" height="40">
-					  <control type="image">
-						 <width>400</width>
-						 <height>60</height>
-						 <visible>Control.HasFocus(310)</visible>
-						 <texture border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texture>
-					  </control>
-					<control type="label">
-						<posy>15</posy>
-						<posx>5</posx>
-						<width>100</width>
-						<height>40</height>
-						<font>font22</font>
-						<textcolor>FFEEEEEE</textcolor>
-						<label>Subtitles</label>
-					</control>
-					<control type="label">
-						<posy>10</posy>
-						<posx>105</posx>
-						<width>300</width>
-						<height>40</height>
-						<font>font22</font>
-						<aligny>center</aligny>
-						<textcolor>grey</textcolor>
-						<selectedcolor>grey</selectedcolor>
-						<align>left</align>
-						<info>ListItem.Label</info>
-					</control>				
-				</focusedlayout>
-			</control>
-				
-				
-			</control>
-			
-			
+				<control type="label">
+					<posy>10</posy>
+					<posx>105</posx>
+					<width>300</width>
+					<height>40</height>
+					<font>font22</font>
+					<aligny>center</aligny>
+					<textcolor>grey</textcolor>
+					<selectedcolor>grey</selectedcolor>
+					<align>left</align>
+					<info>ListItem.Label</info>
+				</control>				
+			</itemlayout>
+			<focusedlayout width="400" height="40">
+				  <control type="image">
+					 <width>400</width>
+					 <height>60</height>
+					 <visible>Control.HasFocus(340)</visible>
+					 <texture border="10">com.xmcnuggetx.plexee/shapes/grey_faded.png</texture>
+				  </control>
+				  <control type="image">
+					 <width>400</width>
+					 <height>60</height>
+					 <visible>Control.HasFocus(340) + IntegerGreaterThan(Container(340).NumItems,1)</visible>
+					 <texture border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texture>
+				  </control>
+				<control type="label">
+					<posy>15</posy>
+					<posx>5</posx>
+					<width>100</width>
+					<height>40</height>
+					<font>font22</font>
+					<textcolor>FFEEEEEE</textcolor>
+					<label>Media</label>
+				</control>
+				<control type="label">
+					<posy>10</posy>
+					<posx>105</posx>
+					<width>300</width>
+					<height>40</height>
+					<font>font22</font>
+					<aligny>center</aligny>
+					<textcolor>grey</textcolor>
+					<selectedcolor>grey</selectedcolor>
+					<align>left</align>
+					<info>ListItem.Label</info>
+				</control>				
+			</focusedlayout>
 		</control>
+
+		<!-- Subtitles ============================================================-->
+		<control type="fixedlist" id="310">
+			<posx>500</posx>
+			<width>400</width>
+			<height>60</height>
+			<orientation>vertical</orientation>
+			<focusposition>0</focusposition>
+			<preloaditems>2</preloaditems>
+			<visible>IntegerGreaterThan(Container(310).NumItems,1)</visible>
+			<onleft>340</onleft>
+			<onleft lang="python">
+<![CDATA[
+if mediaList.IsEnabled():
+	mediaList.SetFocus()
+else:
+	playButton.SetFocus()
+]]>
+			</onleft>
+			
+			<onright>330</onright>
+
+			<itemlayout width="400" height="40">
+				<control type="label">
+					<posy>15</posy>
+					<posx>5</posx>
+					<width>100</width>
+					<height>40</height>
+					<font>font22</font>
+					<textcolor>FFEEEEEE</textcolor>
+					<label>Subtitles</label>
+				</control>
+				<control type="label">
+					<posy>10</posy>
+					<posx>105</posx>
+					<width>300</width>
+					<height>40</height>
+					<font>font22</font>
+					<aligny>center</aligny>
+					<textcolor>grey</textcolor>
+					<selectedcolor>grey</selectedcolor>
+					<align>left</align>
+					<info>ListItem.Label</info>
+				</control>				
+			</itemlayout>
+			<focusedlayout width="400" height="40">
+				  <control type="image">
+					 <width>400</width>
+					 <height>60</height>
+					 <visible>Control.HasFocus(310)</visible>
+					 <texture border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texture>
+				  </control>
+				<control type="label">
+					<posy>15</posy>
+					<posx>5</posx>
+					<width>100</width>
+					<height>40</height>
+					<font>font22</font>
+					<textcolor>FFEEEEEE</textcolor>
+					<label>Subtitles</label>
+				</control>
+				<control type="label">
+					<posy>10</posy>
+					<posx>105</posx>
+					<width>300</width>
+					<height>40</height>
+					<font>font22</font>
+					<aligny>center</aligny>
+					<textcolor>grey</textcolor>
+					<selectedcolor>grey</selectedcolor>
+					<align>left</align>
+					<info>ListItem.Label</info>
+				</control>				
+			</focusedlayout>
+		</control>
+			
+		<!-- Audio ============================================================-->
+		<control type="fixedlist" id="330">
+			<posx>900</posx>
+			<width>370</width>
+			<height>60</height>
+			<orientation>vertical</orientation>
+			<focusposition>0</focusposition>
+			<preloaditems>2</preloaditems>
+			<visible>IntegerGreaterThan(Container(330).NumItems,1)</visible>
+			<onleft>310</onleft>
+
+			<itemlayout width="400" height="40">
+				<control type="label">
+					<posy>15</posy>
+					<posx>5</posx>
+					<width>100</width>
+					<height>40</height>
+					<font>font22</font>
+					<textcolor>FFEEEEEE</textcolor>
+					<label>Audio</label>
+				</control>
+				<control type="label">
+					<posy>10</posy>
+					<posx>105</posx>
+					<width>300</width>
+					<height>40</height>
+					<font>font22</font>
+					<aligny>center</aligny>
+					<textcolor>grey</textcolor>
+					<selectedcolor>grey</selectedcolor>
+					<align>left</align>
+					<info>ListItem.Label</info>
+				</control>				
+			</itemlayout>
+			<focusedlayout width="400" height="40">
+				  <control type="image">
+					 <width>370</width>
+					 <height>60</height>
+					 <visible>Control.HasFocus(330)</visible>
+					 <texture border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texture>
+				  </control>
+				<control type="label">
+					<posy>15</posy>
+					<posx>5</posx>
+					<width>100</width>
+					<height>40</height>
+					<font>font22</font>
+					<textcolor>FFEEEEEE</textcolor>
+					<label>Audio</label>
+				</control>
+				<control type="label">
+					<posy>10</posy>
+					<posx>105</posx>
+					<width>300</width>
+					<height>40</height>
+					<font>font22</font>
+					<aligny>center</aligny>
+					<textcolor>grey</textcolor>
+					<selectedcolor>grey</selectedcolor>
+					<align>left</align>
+					<info>ListItem.Label</info>
+				</control>				
+			</focusedlayout>
+		</control>
+			
+
+		</control>
+			
 	</controls>
 </window>

@@ -45,7 +45,15 @@
 			<height>560</height>
 			
 			<onright>300</onright>
-			<onup>50</onup>
+					<onup lang="python">
+<![CDATA[			
+window = mc.GetWindow(14002)
+if window.GetControl(600).IsVisible():
+	window.GetControl(600).SetFocus()
+else:
+	window.GetControl(50).SetFocus()
+]]>
+					</onup>
 			
 			<content type="action">
 				<onclick lang="Python">handleItem(mc.GetFocusedItem(14002, 200), 14002)</onclick>
@@ -147,7 +155,15 @@
 			<pagecontrol>2000</pagecontrol>
 			
 			<onleft>200</onleft>
-			<onup>51</onup>
+					<onup lang="python">
+<![CDATA[			
+window = mc.GetWindow(14003)
+if window.GetControl(600).IsVisible():
+	window.GetControl(600).SetFocus()
+else:
+	window.GetControl(50).SetFocus()
+]]>
+					</onup>
 			
 			<content type="action">
 				<onclick lang="Python">handleItem(mc.GetFocusedItem(14002, 300), 14002)</onclick>
@@ -303,6 +319,66 @@
 
 		<!-- TOP MENU ============================================================== -->
 		
+<!-- Music player -->
+		<control type="button" id="600">
+			<posx>430</posx>
+			<posy>10</posy>
+			<width>440</width>
+			<height>60</height>
+
+			<ondown>300</ondown>
+			<onright>50</onright>
+			<onup>-</onup>
+			<onleft>200</onleft>
+
+			<visible>Player.HasAudio</visible>
+			<texturenofocus border="10">com.xmcnuggetx.plexee/shapes/faded.png</texturenofocus>
+			<texturefocus border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texturefocus>
+			<onclick lang="python">
+<![CDATA[
+mc.ActivateWindow(12006)
+]]>
+			</onclick>
+		</control>			
+		<control type="image">
+			<posx>440</posx>
+			<posy>20</posy>
+			<width>40</width>
+			<height>50</height>
+			<visible>Player.HasAudio</visible>
+			<aspectratio>stretch</aspectratio>
+			<texture>com.xmcnuggetx.plexee/default_icons/case_artist.png</texture>
+		</control>
+		<control type="label">
+			<posx>490</posx>
+			<posy>35</posy>
+			<width>100</width>
+			<visible>Player.HasAudio + Player.Playing</visible>
+		   <font>Font_NowPlayingTrack</font>
+		   <label>Now Playing:</label>
+		   <textcolor>grey</textcolor>
+		</control>
+		<control type="label">
+			<posx>490</posx>
+			<posy>35</posy>
+			<width>100</width>
+			<visible>Player.HasAudio + Player.Paused</visible>
+		   <font>Font_NowPlayingTrack</font>
+		   <label> - Paused - </label>
+		   <textcolor>grey</textcolor>
+		</control>
+		<control type="fadelabel">
+			<posx>600</posx>
+			<posy>35</posy>
+			<width>260</width>
+			<visible>Player.HasAudio</visible>
+		   <font>Font_NowPlayingTrack</font>
+		   <scroll>true</scroll>
+		   <label>$INFO[MusicPlayer.Artist] - $INFO[MusicPlayer.Album] - $INFO[MusicPlayer.Title]</label>
+		   <textcolor>white</textcolor>
+		</control>
+		<!-- END: Music Player -->
+		
 		<control type="button" id="50">
 			<posx>1122</posx>
 			<posy>18</posy>
@@ -310,7 +386,7 @@
 			<height>64</height>
 			
 			<ondown>300</ondown>
-			<onleft>200</onleft>
+			<onleft>600</onleft>
 			
 			<texturenofocus>com.xmcnuggetx.plexee/buttons/home.png</texturenofocus>
 			<texturefocus>com.xmcnuggetx.plexee/buttons/home_focus.png</texturefocus>

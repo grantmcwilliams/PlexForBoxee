@@ -2,6 +2,7 @@ import base64
 import cgi
 import mc
 import urllib
+import urllib2
 import urlparse
 import util
 import uuid
@@ -130,9 +131,9 @@ class PlexeeManager(object):
 		server = self.getServer(machineIdentifier)
 		if server: return server.getListItems(fullUrl)
 
-	def playVideoUrl(self, machineIdentifier, fullUrl, subitem=None, offset=0):
+	def playVideoUrl(self, machineIdentifier, fullUrl, mediaIndex = 0, subtitleIndex = 0, audioIndex = 0, offset=0):
 		server = self.getServer(machineIdentifier)
-		if server: server.playVideoUrl(fullUrl, subitem, offset)
+		if server: server.playVideoUrl(fullUrl, mediaIndex, subtitleIndex, audioIndex, offset)
 
 	def playMusicUrl(self, machineIdentifier, fullUrl):
 		server = self.getServer(machineIdentifier)
@@ -193,6 +194,7 @@ class MyPlexService(object):
 		self.username = None
 		self.password = None
 		self.authenticationToken = None
+	
 	"""
 	Plex Headers
 	============
@@ -204,7 +206,7 @@ class MyPlexService(object):
 	X-Plex-Device (Device name and model number, eg iPhone3,2, Motorola XOOM, LG5200TV)
 	X-Plex-Client-Identifier (UUID, serial number, or other number unique per device)
 	"""
-	def updateToken(self):
+	def buildPlexCommand(self):
 		http = mc.Http()
 		http.SetHttpHeader("X-Plex-Platform", "Boxee")
 		http.SetHttpHeader("X-Plex-Platform-Version", mc.GetInfoString("System.BuildVersion"))
@@ -215,7 +217,10 @@ class MyPlexService(object):
 		except:http.SetHttpHeader("X-Plex-Device", "Boxee")
 		try: http.SetHttpHeader("X-Plex-Client-Identifier", mc.GetDeviceId())
 		except: http.SetHttpHeader("X-Plex-Client-Identifier", str(uuid.getnode()))
-
+		return http
+	
+	def updateToken(self):
+		http = self.buildPlexCommand()
 		base64String = base64.encodestring("%s:%s" % (self.username, self.password)).replace('\n', '')
 		http.SetHttpHeader("Authorization", "Basic %s" % base64String)
 
@@ -226,6 +231,7 @@ class MyPlexService(object):
 		if data:
 			tree = ElementTree.fromstring(data)
 			self.authenticationToken = tree.findtext("authentication-token", None)
+			util.logDebug("Authentication Token set: "+self.authenticationToken)
 
 	def isAuthenticated(self):
 		return self.authenticationToken != None
@@ -375,12 +381,7 @@ class PlexServer(object):
 		#Resolution
 		mediaNode = tree.find("Media")
 		if mediaNode:
-			resolution = mediaNode.attrib.get("videoResolution","")
-			if resolution.isdigit():
-				resolution = resolution + "p"
-			else:
-				resolution = resolution.upper()
-			li.SetProperty("resolution",util.cleanString(resolution))
+			li.SetProperty("resolution",util.getResolution(mediaNode))
 			
 			channels = mediaNode.attrib.get("audioChannels","")
 			if channels.isdigit():
@@ -433,7 +434,15 @@ class PlexServer(object):
 		if listItem.GetProperty('type') == 'episode':
 			epTitle = util.formatEpisodeTitle(season="", episode=listItem.GetProperty('index'), title=listItem.GetProperty('title'))
 			listItem.SetProperty("title",epTitle)
-			
+		
+		if listItem.GetProperty('type') == 'track':
+			#Duration
+			duration = ""
+			if element.attrib.has_key("duration") and element.attrib["duration"].isdigit():
+				#Format millisecond duration
+				duration = util.msToFormattedDuration(int(element.attrib["duration"]),False)
+			listItem.SetProperty("durationformatted", duration)
+		
 		# Image paths
 		if element.attrib.has_key("thumb"):
 			listItem.SetImage(0, self.getThumbUrl(listItem.GetProperty("thumb"), self.THUMB_WIDTH, self.THUMB_HEIGHT))
@@ -490,51 +499,88 @@ class PlexServer(object):
 		else:
 			return None
 
-	def getSubtitles(self, fullUrl):
+	def getMediaOptions(self, fullUrl, mediaIndex = 0):
 		"""
-		Return list of subtitles
+		Return list of media and the audio and subtitles for the mediaIndex
 		Jinxo: Only the default - and any SRT files are supported at present
 		"""
-		subItems = mc.ListItems()
+		util.logDebug("Loading media details for: " + fullUrl)
+		subtitleItems = mc.ListItems()
 		subItem = mc.ListItem(mc.ListItem.MEDIA_UNKNOWN)
 		subItem.SetLabel("None")
 		subItem.SetPath("")
-		subItems.append(subItem)
+		subtitleItems.append(subItem)
 
+		audioItems = mc.ListItems()
+		mediaItems = mc.ListItems()
+		
 		videoUrl = self.getUrl(self.getRootUrl(), fullUrl)
 		data = mc.Http().Get(videoUrl)
 		if data:
 			tree = ElementTree.fromstring(data)
 			videoNode = tree[0]
 			foundDefault = False
-			for stream in videoNode.findall("Media/Part/Stream"):
-				if stream.attrib.get("streamType","0") != "3":
-					continue
-				subItem = mc.ListItem(mc.ListItem.MEDIA_UNKNOWN)
+			media = videoNode.findall("Media")
+			
+			index = 0
+			for m in media:
+				mediaItem = mc.ListItem(mc.ListItem.MEDIA_UNKNOWN)
+				resolution = util.getResolution(m)
+				audioCodec = m.attrib.get("audioCodec","")
+				width = m.attrib.get("width","")
+				height = m.attrib.get("height","")
+				label = resolution + " (" + audioCodec.upper() + ") - " + width + "x" + height
+				util.logDebug("-->Media found: " + label)
+				mediaItem.SetLabel(label.encode('utf-8'))
+				mediaItems.append(mediaItem)
+			
+			mediaNode = media[mediaIndex]
+			for stream in mediaNode.find("Part").findall("Stream"):
+				streamType = stream.attrib.get("streamType","0")
 				language = stream.attrib.get("language","Unknown")
 				format = stream.attrib.get("format","?")
+				codec = stream.attrib.get("codec","?")
 				path = stream.attrib.get("key","")
-				
-				source = "File"
-				if path != "":
-					subItem.SetPath(self.getUrl(self.getRootUrl(), path))
-				else:
-					#Jinxo: Only default supported at the moment, as I haven't been able to switch to another....
-					source = "Embedded"
-					default = stream.attrib.get("default","")
-					if default == "":
-						continue
-					if foundDefault:
-						continue
-					foundDefault = True
-					#Jinxo: The value doesn't matter - just enter something
-					subItem.SetPath("1");
+				id = stream.attrib.get("id","")
+
+				if streamType == "3":
+					#Subtitle
+					subItem = mc.ListItem(mc.ListItem.MEDIA_UNKNOWN)
+					subItem.SetProperty('id',id)
+					source = "File"
+					if path != "":
+						subItem.SetPath(self.getUrl(self.getRootUrl(), path))
+					else:
+						#Jinxo: Only default supported at the moment, as I haven't been able to switch to another....
+						source = "Embedded"
+						default = stream.attrib.get("default","")
+						if default == "":
+							continue
+						if foundDefault:
+							continue
+						foundDefault = True
+						#Jinxo: The value doesn't matter - just enter something
+						subItem.SetPath("1")
+						
+					label = language + " (" + format.upper() + ":" + source + ")"
+					util.logDebug("-->Subtitle found: " + label)
+					subItem.SetLabel(label.encode('utf-8'))
+					subtitleItems.append(subItem)
+
+				elif streamType == "2":
+					#Audio
+					audioItem = mc.ListItem(mc.ListItem.MEDIA_UNKNOWN)
+					audioItem.SetPath("1")
+					audioItem.SetProperty('id',id)
+					label = language + " (" + codec.upper() + ")"
+					util.logDebug("-->Audio found: " + label)
+					audioItem.SetLabel(label.encode('utf-8'))
+					audioItems.append(audioItem)
 					
-				label = language + " (" + format.upper() + ":" + source + ")"
-				subItem.SetLabel(label.encode('utf-8'))
-				subItems.append(subItem)
+				else:
+					continue
 			
-		return subItems;
+		return MediaOptions(mediaItems, subtitleItems, audioItems);
 	
 	"""
 	Update media played position for onDeck and resuming behaviour
@@ -562,29 +608,88 @@ class PlexServer(object):
 		util.logDebug("Setting media key=[%s] as unwatched" % mediaKey)
 		mc.Http().Get(url)
 
+	def setAudioStream(self, partId, audioStreamId):
+		import urllib2
+		opener = urllib2.build_opener(urllib2.HTTPHandler)
+		url = self.getRootUrl() + "library/parts/"+partId+"?audioStreamID="+audioStreamId
+		util.logDebug("-->Setting audio stream: "+url)
+		request = urllib2.Request(url)
+		request.add_header('Content-Type', 'text/html')
+		request.get_method = lambda: 'PUT'
+		url = opener.open(request)
+	
+	def setSubtitleStream(self, partId, subtitleStreamId):
+		import urllib2
+		opener = urllib2.build_opener(urllib2.HTTPHandler)
+		url = self.getRootUrl() + "library/parts/"+partId+"?subtitleStreamID="+subtitleStreamId
+		util.logDebug("-->Setting subtitle stream: "+url)
+		request = urllib2.Request(url)
+		request.add_header('Content-Type', 'text/html')
+		request.get_method = lambda: 'PUT'
+		url = opener.open(request)
+
+	def getDirectStreamUrl(self, mediaKey, mediaIndex, partIndex, offset = 0):
+	
+		xPlexPlatform = "Boxee"
+		xPlexPlatformVersion = mc.GetInfoString("System.BuildVersion")
+		xPlexProvides = "player"
+		xPlexProduct = "Plexee"
+		xPlexVersion = "1.0"
+		xPlexDevice = "Windows"
+		try: xPlexClientIdentifier = mc.GetDeviceId()
+		except: xPlexClientIdentifier = str(uuid.getnode())
+
+		url = self.getRootUrl() + "video/:/transcode/universal/"
+		url = url + "start?path=http%3A%2F%2F127.0.0.1%3A32400%2Flibrary%2Fmetadata%2F" + str(mediaKey)
+		url = url + "&mediaIndex=" + str(mediaIndex)
+		url = url + "&partIndex=" + str(partIndex)
+		url = url + "&protocol=http&offset=" + str(offset)
+		#url = url + "&fastSeek=1&directPlay=0&directStream=1&videoQuality=100&videoResolution=1920x1080&maxVideoBitrate=20000&subtitleSize=100&audioBoost=100"
+		url = url + "&fastSeek=1&directPlay=0&directStream=1&videoQuality=100&subtitleSize=100&audioBoost=100"
+		url = url + "&X-Plex-Product=" + xPlexProduct
+		url = url + "&X-Plex-Version=" + xPlexVersion
+		url = url + "&X-Plex-Client-Identifier=" + xPlexClientIdentifier
+		url = url + "&X-Plex-Platform=" + xPlexPlatform
+		url = url + "&X-Plex-Platform-Version=" + xPlexPlatformVersion
+		url = url + "&X-Plex-Device=" + xPlexDevice
+		#url = url + "&X-Plex-Device-Name=" + ...
+		url = url + "&Accept-Language=en"
+		util.logDebug("-->Setting direct stream: "+url)
+		return url
+		
 	"""
 	Update the played progress every 5 seconds while the player is playing
 	"""
-	def monitorPlayback(self, key, offset):
+	def monitorPlayback(self, key, offset, totalTimeSecs, isDirectStream):
 		progress = 0
+		util.logDebug("Monitoring playback to update progress...")
 		#Whilst the file is playing back
-		while xbmc.Player().isPlaying():
+		player = mc.GetPlayer()
+		if isDirectStream:
+			currentTimeSecs = offset
+		while player.IsPlaying():
 			#Get the current playback time
-			currentTime = int(xbmc.Player().getTime())
-			totalTime = int(xbmc.Player().getTotalTime())
-			try:
-				progress = int(( float(currentTime) / float(totalTime) ) * 100)
-			except:
+			if not isDirectStream:
+				currentTimeSecs = int(player.GetTime())
+			elif not player.IsPaused():
+				#Can't get time from player - so estimate progress
+				currentTimeSecs = currentTimeSecs + 5
+			
+			if totalTimeSecs != 0:
+				progress = int(( float(currentTimeSecs) / float(totalTimeSecs)) * 100)
+			else:
 				progress = 0
 			
+			util.logDebug("-->Progress = "+str(progress) + " ("+str(currentTimeSecs)+":"+str(totalTimeSecs)+")")
+
 			#If we are less than 95% complete, store resume time
 			if progress > 0 and progress < 95:
-				progress=currentTime*1000
 				if offset == 0:
 					#Clear it, likely start from beginning clicked
 					offset = 1
 					self.setMediaWatched(key)
-				self.setMediaPlayedPosition(key, progress)
+				util.logDebug("-->Updating played duration to "+str(currentTimeSecs*1000))
+				self.setMediaPlayedPosition(key, currentTimeSecs*1000)
 
 			#Otherwise, mark as watched
 			elif progress >= 95:
@@ -592,11 +697,15 @@ class PlexServer(object):
 				break
 			xbmc.sleep(5000)
 		#If we get this far, playback has stopped
-		util.logDebug("Playback Stopped (or at 95%)")
+		util.logDebug("-->Playback Stopped (or at 95%)")
 
-	def playVideoUrl(self, fullUrl, subitem = None, offset=0):
+	def playVideoUrl(self, fullUrl,  mediaIndex, subtitleIndex, audioIndex, offset=0):
 		videoUrl = self.getUrl(self.getRootUrl(), fullUrl)
 		data = mc.Http().Get(videoUrl)
+		isDirectStream = False
+		if offset != 0:
+			offset = offset/1000
+			
 		if data:
 			tree = ElementTree.fromstring(data)
 			videoNode = tree[0]
@@ -607,12 +716,32 @@ class PlexServer(object):
 			description = util.cleanString(videoNode.attrib.get("summary",""))
 			title = util.cleanString(videoNode.attrib.get("title", "Plex Video"))
 			contentRating = util.cleanString(videoNode.attrib.get("contentRating",""))
+			videoId = videoNode.attrib.get("ratingKey")
 			
-			for part in videoNode.findall("Media/Part"):
+			media = videoNode.findall("Media")
+			mediaNode = media[mediaIndex]
+			
+			totalTimeSecs = int(mediaNode.attrib.get("duration","0"))
+			if totalTimeSecs != 0:
+				totalTimeSecs = totalTimeSecs/1000
+			
+			#Find all media parts to play e.g. CD1, CD2
+			partIndex = 0
+			for part in mediaNode.findall("Part"):
+				partId = part.attrib.get("id")
 				li = mc.ListItem(mc.ListItem.MEDIA_VIDEO_CLIP)
 				li.SetTitle(title)
 				li.SetLabel(title)
-				li.SetPath(self.getUrl(self.getRootUrl(), part.attrib.get("key")))
+				if audioIndex != 0:
+					util.logDebug("Changing audio stream")
+					self.setAudioStream(partId, str(audioIndex))
+					self.setSubtitleStream(partId, str(subtitleIndex))
+					
+					url = self.getDirectStreamUrl(videoId, mediaIndex, partIndex, offset)
+					li.SetPath(url)
+					isDirectStream = True
+				else:
+					li.SetPath(self.getUrl(self.getRootUrl(), part.attrib.get("key")))
 				li.SetThumbnail(thumbnailUrl)
 				li.SetDescription(description, False)
 				li.SetContentRating(contentRating)
@@ -625,55 +754,94 @@ class PlexServer(object):
 					li.SetSeason(int(videoNode.attrib.get('parentIndex')))
 				
 				playlist.Add(li)
+				partIndex = partIndex + 1
 
 			playlist.Play(0)
 			
 			#ok wait for player to start
 			loop = 0
-			util.logDebug("Waiting on player")
+			loopTimeout = 20
+			util.logDebug("Waiting on player...")
 			while not xbmc.Player().isPlaying():
 				xbmc.sleep(1000)
 				loop = loop + 1
-				if loop > 10:
+				if loop > loopTimeout:
 					break
 			
-			util.logDebug("Player started...")
-			#set any offset
-			if offset != 0:
-				xbmc.Player().seekTime(offset/1000)
-
-			#Set subtitles
-			subtitleKey = ""
-			if subitem != None:
-				subtitleKey = subitem.GetPath()
-				
-			if subtitleKey == "":
-				import os
-				noSubPath = os.path.join(mc.GetApp().GetAppMediaDir(), "media", "no_subs.srt")
-				xbmc.Player().setSubtitles(noSubPath)
+			if loop <= loopTimeout:
+				util.logDebug("Player started...")
 			else:
-				util.logInfo("Setting subtitles to: " + subtitleKey)
-				xbmc.Player().setSubtitles(subtitleKey)
+				util.logDebug("Timed out waiting on Player to start - progress updating may not work...")
+			
+			#set any offset
+			if not isDirectStream:
+				#Set seek and subtitles
+				if offset != 0 and audioIndex == 0:
+					util.logDebug("Seeking to resume position")
+					xbmc.Player().seekTime(offset)
+
+				#Set subtitles
+				subtitleKey = ""
+				if subtitleIndex != 0:
+					for s in mediaNode.findall("Part/Stream"):
+						if s.attrib.get("id") != str(subtitleIndex):
+							continue;
+						subtitleKey = self.getUrl(self.getRootUrl(), s.attrib.get("key"))
+					
+				if subtitleKey == "":
+					import os
+					noSubPath = os.path.join(mc.GetApp().GetAppMediaDir(), 'media', 'no_subs.srt')
+					xbmc.Player().setSubtitles(noSubPath)
+				else:
+					util.logInfo("Setting subtitles to: " + subtitleKey)
+					xbmc.Player().setSubtitles(subtitleKey)
+			
+			#Set audio
+			#Jinxo: Alas not supported...
+			#if audioIndex != 0:
+			#	xbmc.Player().setAudioStream(audioIndex)
+			#	util.logInfo('Setting audio to stream #: ' + str(audioIndex))
 			
 			#Monitor playback and update progress to plex
 			key = videoNode.attrib.get('ratingKey')
-			self.monitorPlayback(key, offset)
+			self.monitorPlayback(key, offset, totalTimeSecs, isDirectStream)
 			
 		else:
 			return None
 
+	def getPlexItem(self, keyUrl):
+		url = self.getUrl(self.getRootUrl(), keyUrl)
+		if not url:
+			return False
+		data = mc.Http().Get(self.getUrl(self.getRootUrl(), url))
+		if not data:
+			return False
+		tree = ElementTree.fromstring(data)
+		if not tree:
+			return False
+		return tree[0]
+	
+	def getPlexParent(self, plexItem):
+		if not plexItem:
+			return False
+		key = plexItem.attrib.get("parentKey")
+		return self.getPlexItem(key)
+	
 	def playMusicUrl(self, fullUrl):
-		trackUrl = self.getUrl(self.getRootUrl(), fullUrl)
-		data = mc.Http().Get(trackUrl)
-		if data:
-			tree = ElementTree.fromstring(data)
-			trackNode = tree[0]
-			title = trackNode.attrib.get("title", "Plex Track")
+		track = self.getPlexItem(fullUrl)
+		album = self.getPlexParent(track)
+		artist = self.getPlexParent(album)
+		if track:				
+			title = track.attrib.get("title", "Plex Track")
 			playlist = mc.PlayList(mc.PlayList.PLAYLIST_MUSIC)
 			playlist.Clear()
 
-			for part in trackNode.findall("Media/Part"):
+			for part in track.findall("Media/Part"):
 				li = mc.ListItem(mc.ListItem.MEDIA_AUDIO_MUSIC)
+				if album:
+					li.SetAlbum(album.attrib.get("title"))
+				if artist:
+					li.SetArtist(artist.attrib.get("title"))
 				li.SetTitle(title)
 				li.SetLabel(title)
 				li.SetPath(self.getUrl(self.getRootUrl(), part.attrib.get('key')))
@@ -768,3 +936,10 @@ class WindowInformation(object):
 	def __init__(self, titleListItems, childListItems):
 		self.titleListItems = titleListItems
 		self.childListItems = childListItems
+		
+class MediaOptions(object):
+	def __init__(self, mediaItems, subtitleItems, audioItems):
+		self.mediaItems = mediaItems
+		self.subtitleItems = subtitleItems
+		self.audioItems = audioItems
+		
