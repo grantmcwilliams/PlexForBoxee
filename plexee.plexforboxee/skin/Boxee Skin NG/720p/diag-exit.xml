@@ -24,7 +24,7 @@ else:
 		<control type="image">
 			<width>1280</width>
 			<height>720</height>
-			<texture>com.xmcnuggetx.plexee/shapes/faded.png</texture>
+			<texture>shapes/faded.png</texture>
 		</control>
 	</controls>
 

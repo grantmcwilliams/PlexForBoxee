@@ -21,5 +21,3 @@ if ( __name__ == "__main__" ):
 	#plexee.getExitWindow().activate()
 	mc.ActivateWindow(Plexee.DIALOG_EXIT_ID)
 	
-	
-

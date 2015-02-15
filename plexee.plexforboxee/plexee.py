@@ -1,18 +1,97 @@
 import mc
+import os
+import sys
 import urllib
 import util
 import uuid
 import xbmc
 import plex
 import time
+import random
 import threading
 from plexgdm import PlexGDM
 from elementtree import ElementTree
 
+##
+#Provides a simple cache for a windows items to display
+#
+class PlexeeCache(object):
+	def __init__(self, plexee):
+		self.dataUrls = []
+		self.sectionUrls = []
+		self.dataDict = dict()
+		self.sectionDict = dict()
+		self.size = 15
+		self.plexee = plexee
+	
+	def _getIndex(self, url):
+		try:
+			isSection = ("/library/sections/" in url)
+			if isSection:
+				return self.sectionUrls.index(url), isSection
+			else:
+				return self.dataUrls.index(url), isSection
+		except ValueError:
+			return -1, isSection
+	
+	def getItem(self, url, dataHash):
+		if not self.plexee.config.isEnableCacheOn():
+			return False
+		i, isSection = self._getIndex(url)
+		if i == -1:
+			#Not in cache
+			return False
+		name = ""
+		if isSection:
+			name = "section"
+			dict = self.sectionDict
+		else:
+			name = "data"
+			dict = self.dataDict
+
+		item = dict[url]
+		if item.dataHash != dataHash:
+			return False
+		util.logDebug("Retrieved from %s cache: %s" % (name,url))
+		return item
+			
+	def addItem(self, url, windowInformation):
+		if not self.plexee.config.isEnableCacheOn():
+			return
+		i, isSection = self._getIndex(url)
+		if isSection:
+			urls = self.sectionUrls
+			dict = self.sectionDict
+			name = "section"
+		else:
+			urls = self.dataUrls
+			dict = self.dataDict
+			name = "data"
+			
+		if i == -1:
+			#Add to cache
+			size = len(urls)
+			if size >= self.size:
+				urlToRemove = urls[0]
+				del urls[0]
+				del dict[urlToRemove]
+				util.logDebug("Removing from %s cache: %s" % (name,urlToRemove))
+			urls.append(url)
+			dict[url] = windowInformation
+			util.logDebug("Added to %s cache (size=%i): %s" % (name, size, url))
+		else:
+			#Update cache
+			dict[url] = windowInformation
+			util.logDebug("Updated %s cache (size=%i): %s" % (name, i, url))
+
+##
+#Represents a Boxee window.
+#			
 class PlexeeWindow(object):
 	def __init__(self, plexee):
 		self.plexee = plexee
 		self.initialised = False
+		self.window = None
 	
 	def load(self):
 		util.logDebug("On load %s started" % self.getId())
@@ -25,75 +104,659 @@ class PlexeeWindow(object):
 		util.logDebug("On unload %s ended" % self.getId())
 
 	def activate(self):
+		self.plexee.player.stopWaiting()
 		id = self.getId()
 		util.logDebug("Activate Window %s started" % id)
 		mc.ActivateWindow(id)
 		#Initialise links to controls
-		window = mc.GetWindow(self.getId())
-		self.init(window)
+		self.window = mc.GetWindow(self.getId())
+		self.init()
 		#Do any actions on activation of window
-		self.onActivate(window)
+		self.onActivate()
 		util.logDebug("Activate Window %s ended" % id)
 
-	def onActivate(self, window): pass
+	def onActivate(self): pass
 	def onLoad(self): pass
 	def onUnload(self): pass
-	def doInit(self, window): pass
-	def init(self, window):
+	def doInit(self): pass
+	def init(self):
 		if not self.initialised:
-			self.doInit(window)
+			self.doInit()
 			self.initialised = True
 
+	def handleItem(self, clickedItem):
+		"""
+		Determines the appropriate action for a plex item (a url)
+		"""	
+		itemType = clickedItem.GetProperty("itemtype")
+		type = clickedItem.GetProperty("type")
+		util.logDebug("Handling item ItemType: %s, Type: %s, ViewGroup: %s, Path: %s" % (itemType, type, clickedItem.GetProperty("viewgroup"), clickedItem.GetPath()))
+		
+		mc.ShowDialogWait()
+		try:
+
+			if itemType == "Video":
+				#Clicked on a video
+				self.plexee._handleVideoItem(clickedItem, self.getId())
+			
+			elif itemType == "Track":
+				#Clicked on a music track
+				self.plexee._handleTrackItem(clickedItem)
+			
+			elif itemType == "Directory" or itemType == "Artist" or itemType == "Album":
+				#Clicked on a collection of items
+				self.plexee._handleCollectionItem(clickedItem, self.getId())
+				
+			elif itemType == "Photo":
+				#Clicked on a photo
+				self.plexee._handlePhotoItem(clickedItem)
+				
+			elif itemType == "QueueItem":
+				#Clicked on a queue item
+				self.plexee._handlePlexQueueItem(clickedItem)
+
+			# Unknown item
+			else:
+				mc.ShowDialogNotification("Unknown itemType: %s" % itemType)
+		
+		finally:
+			mc.HideDialogWait()
+
+##
+#Represents a Boxee dialog window - extends PlexeeWindow
+#			
 class PlexeeDialog(PlexeeWindow):
 	def close(self): xbmc.executebuiltin("Dialog.Close("+str(self.getId())+")")
 	def __init__(self, plexee):	PlexeeWindow.__init__(self, plexee)
+
+##
+#The dialog object for the for Photo Dialog screen
+#
+class PlexeePhotoDialog(PlexeeDialog):
+	def getId(self): return Plexee.DIALOG_PHOTO_ID
+
+	def doInit(self):
+		window = self.window
+		self.photoList = window.GetList(100)
+		self.loadingLabel = window.GetLabel(101)
+		self.menuPanel = window.GetControl(300)
+		self.rotateButton = window.GetButton(110)
+		self.slideshow = window.GetControl(102)
+		self.slideOptions = [1,2,3]
+		self.slideThread = threading.Thread(target=self.threadShow)
+
+	def rotate(self, clockwise=True):
+		#increment from 8 to 5 rotates clockwise
+		li = self.getFocusedPhoto()
+		rotation = li.GetProperty('rotation')
+		if rotation.isdigit():
+			r = int(rotation)
+		else:
+			if clockwise: r=9
+			else: r=0
+		if clockwise:
+			if r<5:
+				r=r+4
+			else:
+				r = r - 1
+			if r<5:
+				r=8
+		else:
+			if r>4:
+				r=r-4
+			else:
+				r = r + 1
+			if r>4:
+				r=1
+		li.SetProperty('rotation',str(r))
+		
+	def zoom(self):
+		li = self.getFocusedPhoto()
+		zoom = li.GetProperty('zoom')
+		if zoom == "":
+			z = 1
+		else:
+			z = int(zoom) + 1
+		if z>5:
+			z=0
+		li.SetProperty('zoom',str(z))
+
+	def toggleMenu(self, on):
+		if not on:
+			self.menuPanel.SetVisible(False)
+			self.rotateButton.SetFocus()
+		else:
+			self.stopSlideshow()
+			self.menuPanel.SetVisible(True)
+			self.menuPanel.SetFocus()
+
+	def showSettings(self):
+		settingsDialog = self.plexee.getSettingsDialog()
+		settingsDialog.activate()
+		settingsDialog.showPhotoSettings()
+
+	def getFocusedPhoto(self):
+		return self.photoList.GetItem(self.photoList.GetFocusedItem())
+		
+	def showNextImage(self, forward=True):
+		list = self.photoList
+		li = self.getFocusedPhoto()
+		li.SetProperty('rotation','')
+		li.SetProperty('zoom','')
+		listSize = len(list.GetItems())
+		if listSize == 0:
+			return
+		
+		if forward:
+			index = list.GetFocusedItem() + 1
+			if index >= listSize:
+				index = 0
+		else:
+			index = list.GetFocusedItem() - 1
+			if index < 0:
+				index = listSize - 1
+		
+		#loading.SetVisible(False)
+		list.SetFocusedItem(index)
+		#xbmc.sleep(500)
+		#loading.SetVisible(True)
+
+	def stopSlideshow(self):
+		if self.slideshow.IsVisible():
+			self.slideshow.SetVisible(False)
+			try:
+				self.slideThread.join()
+			except: pass
+
+	def threadShow(self):
+		config = self.plexee.config
+		list = self.photoList
+		if config.isSlideshowZoomOn():
+			slideShowDelay = 5
+		else:
+			slideShowDelay = config.getSlideShowDelaySec()
+		
+		pos = list.GetFocusedItem()
+		while self.slideshow.IsVisible():
+			i=0
+			while i<slideShowDelay*1000:
+				if not self.slideshow.IsVisible():
+					break
+				i = i + 100
+				xbmc.sleep(100)
+			self.showNextImage()
+				
+		#Slideshow finished
+		for li in list.GetItems():
+			li.SetProperty('slideshow','')
+		list.SetFocusedItem(pos)
+		
+		
+	def startSlideshow(self):
+		list = self.photoList
+		#set slideshow options
+		opt = 0
+		for li in list.GetItems():
+			li.SetProperty('slideshow', str(self.slideOptions[opt]))
+			opt = opt + 1
+			if opt>len(self.slideOptions)-1:
+				opt = 0
+
+		#show slides until stopped
+		self.slideshow.SetVisible(True)
+		self.toggleMenu(on=False)
+		self.slideThread.start()
 	
+##
+#The window object for the for Directory screen
+#
 class PlexeeDirectoryWindow(PlexeeWindow):
+
+	MUSIC_GROUP = 599
+	HOME_BUTTON = 50
+	MENU_LIST = 200
+	CONTENT_LIST = 300
+	
+	def getMenuItems(self):
+		return self.window.GetList(Plexee.DIRECTORY_SECONDARY_ID).GetItems()
+	
+	def hide(self):
+		self.window.GetList(100).SetVisible(False)
+		self.window.GetList(200).SetVisible(False)
+		self.window.GetList(300).SetVisible(False)
+	
+	def show(self):
+		self.window.GetList(100).SetVisible(True)
+		self.window.GetList(200).SetVisible(True)
+		self.window.GetList(300).SetVisible(True)
+
 	def getId(self): return Plexee.WINDOW_DIRECTORY_ID
-	def __init__(self, plexee):	PlexeeWindow.__init__(self, plexee)
+	def __init__(self, plexee):
+		self.clickedItem = None
+		self.server = None
+		PlexeeWindow.__init__(self, plexee)
 
 	def onMenuUpdated(self): pass
 	def onContentUpdated(self): pass
 	
-	def updateMenu(self, type, server, key):
-		data = ""
-		url = ""
-		if type == Plexee.MENU_SECTIONS:
-			data, url = server.getSectionData(key)
-		elif type == Plexee.MENU_DIRECT:
+	def menuClicked(self):
+		clickedItem = mc.GetFocusedItem(self.getId(), PlexeeDirectoryWindow.MENU_LIST)
+		self.handleMenuItem(clickedItem)	
+	
+	def contentClicked(self):
+		clickedItem = mc.GetFocusedItem(self.getId(), PlexeeDirectoryWindow.CONTENT_LIST)
+		self.handleItem(clickedItem)
+	
+	def handleMenuItem(self, clickedItem):
+		"""
+		Handles clicking on a menu item and displays a submenu or updates the displsyed content
+		"""
+		server = self.server
+		if not server:
+			server = self.plexee.getItemServer(clickedItem)
+			
+		config = self.plexee.config
+		key = clickedItem.GetPath()
+		
+		#Show search dialog if search menu item clicked
+		if clickedItem.GetProperty("search") == "1":
+			search = mc.ShowDialogKeyboard(clickedItem.GetProperty("prompt"), "", False)
+			if search:
+				key += "&query=" + urllib.quote(search)
+			else:
+				return
+		mc.ShowDialogWait()
+		try:
+			"""Get the item data and determine the action based on the content"""
 			data, url = server.getData(key)
-		util.logDebug("Updating menu using data from url "+url)
-		menuInformation = self.plexee.getListItems(server, data, url)
-		self.updateMenuItems(menuInformation.childListItems)
+			if clickedItem.GetProperty('title1') == 'Search':
+				windowInformation = self.plexee.getListItems(server, data, url, clickedItem)
+			else:
+				windowInformation = self.plexee.getListItems(server, data, url)
+			if not windowInformation:
+				msg = "An unexpected error occurred. Unable to retrieve items."
+				util.logDebug(msg)
+				mc.ShowDialogNotification(msg)
+				return
+			titleItem = windowInformation.titleListItem
+			isMenuCollection = (titleItem.GetProperty("ismenu") == "1")
+			
+			"""Set the display collection type"""
+			displayingCollection = self.plexee.getDisplayingCollection(clickedItem, titleItem)
+				
+			"""Debug"""
+			msg = "Handling menu item - displaying: %s, ViewGroup: %s, InWindowId: %s" % (displayingCollection, titleItem.GetProperty("viewgroup"), str(self.getId()))
+			util.logDebug(msg)
 
+			if isMenuCollection and displayingCollection not in Plexee.DISPLAY_AS_CONTENT:
+				self.pushState()
+				menuItems = windowInformation.childListItems
+				self.updateMenuItems(menuItems)
+			else:
+				# if displayingCollection == "track" and self.getId() != Plexee.WINDOW_ALBUM_ID:
+					# if not titleItem.GetImage(0): titleItem.SetImage(0, self.plexee._getArtUrl(server, titleItem))
+					# titleItem.SetImage(1, self.plexee._getArtUrl(server, titleItem))
+					# albumWindow = self.plexee.getAlbumWindow()
+					# menuItems = self.getMenuItems()
+					# albumWindow.activate(clickedItem, server)
+					# albumWindow.updateMenuItems(menuItems)
+					# albumWindow.updateContentItems(windowInformation)
+				# else:
+				if displayingCollection in ["track","episode"]:
+					if not titleItem.GetImage(0): titleItem.SetImage(0, self.plexee._getArtUrl(server, titleItem))
+					titleItem.SetImage(1, self.plexee._getArtUrl(server, titleItem))
+				self.updateContentItems(windowInformation)
+		finally:
+			mc.HideDialogWait()
+	
+	def moveUpFromContent(self):
+		window = self.window
+		if window.GetControl(self.MUSIC_GROUP).IsVisible():
+			window.GetControl(self.MUSIC_GROUP).SetFocus()
+		else:
+			window.GetControl(self.HOME_BUTTON).SetFocus()	
+	
+	def activate(self, clickedItem, server):
+		self.clickedItem = clickedItem
+		self.server = server
+		PlexeeWindow.activate(self)
+
+	def setTitleItem(self, item):
+		self.window.GetList(Plexee.DIRECTORY_TITLE_ID).SetItems(item)
+		
+	def pushState(self):
+		mc.GetActiveWindow().PushState()
+		
 	def updateMenuItems(self, menuItems):
-		window = mc.GetWindow(self.getId())
-		window.GetList(Plexee.DIRECTORY_SECONDARY_ID).SetItems(menuItems)
+		self.window.GetList(Plexee.DIRECTORY_SECONDARY_ID).SetItems(menuItems)
 		self.onMenuUpdated()
 
 	def updateContentItems(self, windowInformation):
-		window = mc.GetWindow(self.getId())
-		window.GetList(Plexee.DIRECTORY_TITLE_ID).SetItems(windowInformation.titleListItems)
+		window = self.window
+		titleItems = window.GetList(Plexee.DIRECTORY_TITLE_ID).GetItems()
+		currentHash = ""
+		if len(titleItems) == 1:
+			currentHash = titleItems[0].GetProperty('hash')
+		newHash = windowInformation.titleListItem.GetProperty('hash')
+		if currentHash == newHash:
+			util.logDebug("Skipping update content hasn't changed")
+			self.show()
+			return
+		t = mc.ListItems()
+		t.append(windowInformation.titleListItem)
+		self.setTitleItem(t)
 		window.GetList(Plexee.DIRECTORY_ITEMS_ID).SetItems(windowInformation.childListItems)
+		self.show()
 		window.GetControl(Plexee.DIRECTORY_ITEMS_ID).SetFocus()
 		self.onContentUpdated()
 		
+	def getContentList(self): return self.window.GetList(Plexee.DIRECTORY_ITEMS_ID)
+	def getMenuList(self): return self.window.GetList(Plexee.DIRECTORY_SECONDARY_ID)
+	def getSelectedMenuItem(self): return mc.GetFocusedItem(self.getId(), PlexeeDirectoryWindow.MENU_LIST)
+	def getSelectedContentItem(self): return mc.GetFocusedItem(self.getId(), PlexeeDirectoryWindow.CONTENT_LIST)
+		
+	def homeClicked(self):
+		mc.ShowDialogWait()
+		try:
+			self.plexee.player.stopTheme()
+			self.plexee.clearWindowState()
+			self.plexee.getHomeWindow().activate()
+		finally:
+			mc.HideDialogWait()
+		
+##
+#The window object for the for Directory Album screen
+#
 class PlexeeAlbumWindow(PlexeeDirectoryWindow):
 	def getId(self): return Plexee.WINDOW_ALBUM_ID
 	def __init__(self, plexee):	PlexeeDirectoryWindow.__init__(self, plexee)
 		
-class PlexeeSeasonWindow(PlexeeDirectoryWindow):
-	def getId(self): return Plexee.WINDOW_SEASON_ID
-	def __init__(self, plexee):	PlexeeDirectoryWindow.__init__(self, plexee)
+##
+#The window object for the for Directory Album screen
+#
+class PlexeePlaylistWindow(PlexeeDirectoryWindow):
+	def getId(self): return Plexee.WINDOW_PLAYLIST_ID
+	def __init__(self, plexee):
+		PlexeeDirectoryWindow.__init__(self, plexee)
+		self.currentMenuItem = self._getCurrentMenuItem()
+	
+	def activate(self):
+		PlexeeWindow.activate(self)
+	
+	def _getCurrentMenuItem(self):
+		t = mc.ListItem()
+		t.SetTitle("<Current Playlist>")
+		t.SetProperty("title",t.GetTitle())
+		t.SetProperty("playlisttype","audio")
+		return t
+	
+	def onActivate(self):
+		#Have playlists changed?
+		hash, menuItems = self.getMyPlaylistItems()
+		pos = self.getMenuList().GetFocusedItem()
+			
+		t = mc.ListItems()
+		t.append(self.currentMenuItem)
+		for m in menuItems: t.append(m)
+		if pos != 0 and self.menuHash == hash:
+			return
+		self.menuHash = hash
+		self.updateMenuItems(t)
+		self.menuClicked()
+	
+	def doInit(self):
+		self.menuHash = ""
+		t = mc.ListItem(mc.ListItem.MEDIA_UNKNOWN)
+		t.SetProperty('title1','Playlists')
+		t.SetProperty('title2','Click a track/video to play the list')
+		self.titleItem = t
+		l = mc.ListItems()
+		l.append(t)
+		self.window.GetList(Plexee.DIRECTORY_TITLE_ID).SetItems(l)
+		xbmc.executebuiltin("PlayerControl(RepeatOff)")
+	
+	def getMyPlaylistItems(self):
+		libraryListItems = mc.ListItems()
+		myServers = self.plexee.plexManager.myServers
+		hash = ""
+		for machineID in myServers:
+			server = myServers[machineID]
+			data, url = server.getPlaylistData()
+			windowInformation = self.plexee.getListItems(server, data, url, None)
+			hash = hash + windowInformation.dataHash
+			for childListItem in windowInformation.childListItems:
+				childListItem.SetTitle(childListItem.GetProperty("title"))
+				libraryListItems.append(childListItem)
+		return hash, libraryListItems
 
+	def setTitleItem(self, item):
+		pass
+	
+	def repeatList(self):
+		if not self.window.GetToggleButton(805).IsSelected():
+			xbmc.executebuiltin("PlayerControl(RepeatOff)")
+		else:
+			xbmc.executebuiltin("PlayerControl(RepeatAll)")
+	
+	def shuffleList(self):
+		items = self.getContentList().GetItems()
+		l = []
+		for i in items: l.append(i)
+		random.shuffle(l)
+		m = mc.ListItems()
+		for i in l: m.append(i)
+		self.getContentList().SetItems(m)
+	
+	def deleteList(self, menuItem = None, internal = False):
+		player = self.plexee.player
+		if not menuItem:
+			menuItem = self.getSelectedMenuItem()
+		key = menuItem.GetProperty('ratingkey')
+		server = self.plexee.getItemServer(menuItem)
+		title = util.cleanString(menuItem.GetTitle())
+		if not internal:
+			selection = mc.ShowDialogConfirm("Delete?", "Are you sure you wish to delete the playlist ["+title+"]?", "No", "Yes")
+			if not selection:
+				return
+		if menuItem.GetTitle() == self.currentMenuItem.GetTitle():
+			player.getMusicPlaylist().Clear()
+			self.menuClicked()
+			return
+		if key != "" and server:
+			self.plexee.plexManager.deletePlaylist(server, key)
+			if not internal:
+				self.onActivate()
+				self.getMenuList().SetFocus()
+	
+	def playList(self):
+		contentList = self.getContentList()
+		startIndex = contentList.GetFocusedItem()
+		menuItem = self.getSelectedMenuItem()
+		server = self.plexee.getItemServer(menuItem)
+		player = self.plexee.player
+
+		if menuItem.GetTitle() == self.currentMenuItem.GetTitle():
+			#Boxee current playlist
+			player.clearMusicList()
+			t = mc.ListItems()
+			for i in contentList.GetItems():
+				player.addMusic(i)
+			player.playMusicList(startIndex)
+			return
+		
+		type = menuItem.GetProperty('playlisttype')
+		util.logDebug("Playlist Type: "+type)
+		items = mc.ListItems()
+		if type == 'audio':
+			for item in contentList.GetItems():
+				self.plexee.createAndAddMusicItem(items, item)
+			player.playMusicItems(items, startIndex)
+		else:
+			player.clearVideoList()
+			for item in contentList.GetItems():
+				self.plexee.queueVideoItem(server, item)
+			player.playVideoList(startIndex)
+	
+	def stop(self):
+		mc.GetPlayer().Stop()
+
+	def pause(self):
+		player = self.plexee.player
+		if not mc.GetPlayer().IsPlayingAudio():
+			self.playList()
+		else:
+			player.pause()
+	
+	def contentOnRight(self):
+		index = self.getContentList().GetFocusedItem()
+		self.getInfoGroup().SetFocus()
+	
+	def infoOnLeft(self):
+		self.getContentList().SetFocus()
+	
+	def deleteClicked(self):
+		player = self.plexee.player
+		selection = mc.ShowDialogConfirm("Delete?", "Are you sure you wish to delete this item from the playlist?", "No", "Yes")
+		if not selection:
+			return
+		clickedItem = self.getSelectedContentItem()
+		menuItem = self.getSelectedMenuItem()
+		playlistId = menuItem.GetProperty('ratingkey')
+		server = self.plexee.getItemServer(clickedItem)
+		itemId = clickedItem.GetProperty("playlistitemid")
+		if itemId != "":
+			self.plexee.plexManager.deleteFromPlaylist(server, playlistId, itemId)
+		else:
+			#Delete from playlist queue
+			removeIndex = self.getContentList().GetFocusedItem()
+			menuItem = self.getSelectedMenuItem()
+			type = menuItem.GetProperty('playlisttype')
+			if type == 'audio':
+				player.removeMusicItem(self.getContentList(), removeIndex)
+			else:
+				player.removeVideoItem(self.getContentList(), removeIndex)
+		self.menuClicked()
+	
+	def selectMenuItem(self, name):
+		menuItems = self.getMenuList()
+		i = 0
+		found = False
+		for m in menuItems.GetItems():
+			if m.GetTitle() == name:
+				menuItems.SetFocusedItem(i)
+				found = True
+			i = i + 1
+		if found:
+			self.menuClicked()
+	
+	def menuClicked(self):
+		player = self.plexee.player
+		clickedItem = self.getSelectedMenuItem()
+		type = clickedItem.GetProperty('playlisttype')
+		server = self.plexee.getItemServer(clickedItem)
+		if clickedItem.GetTitle() == self.currentMenuItem.GetTitle():
+			util.logDebug("Show playlist..." + type)
+			if type == 'audio':
+				childItems = player.getDisplayMusicList()
+			else:
+				childItems = player.getDisplayVideoList()
+			self.getContentList().SetItems(childItems)
+			size = len(childItems)
+		else:
+			self.handleMenuItem(clickedItem)
+			childItems = self.getContentList().GetItems()
+			size = len(childItems)
+			self.titleItem.SetProperty('size',str(size))
+		if size > 0:
+			tempList = range(size)
+			random.shuffle(tempList)
+			pos = tempList[0]
+			url = False
+			if not server:
+				#Current Playlist
+				if type == 'audio':
+					item = player.getCurrentMusicListItem()
+				else:
+					item = player.getCurrentVideoListItem()
+				if not item:
+					item = self.getContentList().GetItems()[0]
+				server = self.plexee.getItemServer(item)
+				if server:
+					url = self.plexee._getArtUrl(server, item)
+			else:
+				url = self.plexee._getArtUrl(server, childItems[pos])
+			if url:
+				self.titleItem.SetImage(0, url)
+				l = mc.ListItems()
+				l.append(self.titleItem)
+				self.window.GetList(Plexee.DIRECTORY_TITLE_ID).SetItems(l)
+
+	def contentClicked(self):
+		mc.ShowDialogWait()
+		try:
+			self.playList()
+		finally:
+			mc.HideDialogWait()
+		
+	def saveList(self):
+		menuItem = self.getSelectedMenuItem()
+		name = ""
+		if menuItem.GetTitle() != self.currentMenuItem.GetTitle():
+			selection = mc.ShowDialogSelect("New or Update?", ["Save as a new playlist?","Update the current playlist?","Cancel"])
+			if selection == 1:
+				name = menuItem.GetTitle()
+				self.deleteList(menuItem, internal = True)
+			elif selection == 0:
+				pass	
+			else:
+				return
+		if name == "":
+			name = mc.ShowDialogKeyboard("Enter Playlist name", "", False)
+		if name == "":
+			return
+		items = self.getContentList().GetItems()
+		if len(items) == 0:
+			return
+		item = items[0]
+		server = self.plexee.getItemServer(item)
+		if not server:
+			mc.ShowDialogNotification("Failed to determine Plex server to save list to")
+		else:
+			self.plexee.plexManager.savePlaylist(server, name, util.getProperties(self.getContentList().GetItems(),["key"]))
+			self.onActivate()
+			self.selectMenuItem(name)
+				
+##
+#The window object for the for Home screen
+#
 class PlexeeHomeWindow(PlexeeWindow):
 	
+	MUSIC_GROUP = 599
+	SETTINGS_BUTTON = 30
+
 	def getId(self): return Plexee.WINDOW_HOME_ID
 
 	def __init__(self, plexee):
 		PlexeeWindow.__init__(self, plexee)
-		
-	def doInit(self, window):
+	
+	def onUnload(self): pass
+	
+	def refresh(self):
+		self.loadContent()
+	
+	def itemClicked(self, listId):
+		clickedItem = mc.GetFocusedItem(self.getId(), listId)
+		self.handleItem(clickedItem)
+
+	def moveUpFromContent(self):
+		window = self.window
+		if window.GetControl(self.MUSIC_GROUP).IsVisible():
+			window.GetControl(self.MUSIC_GROUP).SetFocus()
+		else:
+			window.GetControl(self.SETTINGS_BUTTON).SetFocus()	
+
+	def doInit(self):
+		window = self.window
 		self.myLibrary = window.GetList(110)
 		self.sharedLibraries = window.GetList(210)
 		self.myChannels = window.GetList(310)
@@ -103,20 +766,22 @@ class PlexeeHomeWindow(PlexeeWindow):
 		self.myQueueList = window.GetList(810)
 		self.homeGroupList = window.GetControl(Plexee.HOME_GROUPLIST_ID)
 		
+	def playlistClicked(self):
+		self.plexee.getPlaylistWindow().activate()
+	
 	def searchClicked(self):
 		mc.ShowDialogWait()
 		try:
 			config = self.plexee.config
-			window = mc.GetWindow(14000)
-			searchList = window.GetList(710)
-			searchText = mc.ShowDialogKeyboard("Search for?", config.getLastSearch(), False)
+			#searchText = mc.ShowDialogKeyboard("Search for?", config.getLastSearch(), False)
+			searchText = mc.ShowDialogKeyboard("Search for?", "", False)
 			if searchText != "":
 				config.setLastSearch(searchText)
-				searchList.SetItems(self.getSearchItems(searchText))
+				self.searchList.SetItems(self.getSearchItems(searchText))
 			else:
 				config.setLastSearch('')
 				blankItems = mc.ListItems()
-				searchList.SetItems(blankItems)
+				self.searchList.SetItems(blankItems)
 		finally:
 			mc.HideDialogWait()	
 	
@@ -127,7 +792,7 @@ class PlexeeHomeWindow(PlexeeWindow):
 			pass
 	
 	def onLoad(self):
-		self.plexee.stopTheme()
+		self.plexee.player.stopTheme()
 		if self.plexee.getPlayDialog().refreshOnDeck:
 			self.refreshMyOnDeck()
 
@@ -259,6 +924,9 @@ class PlexeeHomeWindow(PlexeeWindow):
 					libraryListItems.append(childListItem)
 		return libraryListItems
 	
+##
+#The dialog object for the for Play Dialog screen
+#
 class PlexeePlayDialog(PlexeeDialog):
 
 	def getId(self): return Plexee.DIALOG_PLAY_ID
@@ -267,7 +935,8 @@ class PlexeePlayDialog(PlexeeDialog):
 		PlexeeDialog.__init__(self, plexee)
 		self.refreshOnDeck = False
 	
-	def doInit(self, window):
+	def doInit(self):
+		window = self.window
 		self.subtitleList = window.GetList(310)
 		self.playButton = window.GetButton(320)
 		self.audioList = window.GetList(330)
@@ -279,8 +948,7 @@ class PlexeePlayDialog(PlexeeDialog):
 		listItems.append(item)
 		self.playList.SetItems(listItems)
 		self.playItem = self.playList.GetItem(0)
-		machineIdentifier = self.playItem.GetProperty("machineidentifier")
-		self.server = self.plexee.plexManager.getServer(machineIdentifier)
+		self.server = self.plexee.getItemServer(self.playItem)
 		self.subtitleList.SetItems(mediaOptions.subtitleItems)
 		self.audioList.SetItems(mediaOptions.audioItems)
 		self.mediaList.SetItems(mediaOptions.mediaItems)
@@ -292,17 +960,13 @@ class PlexeePlayDialog(PlexeeDialog):
 			self.mediaList.SetEnabled(True)
 
 		if fromWindowId == Plexee.WINDOW_HOME_ID and self.plexee.isEpisode(item):
-			themeKey = item.GetProperty("grandparenttheme")
-			util.logDebug("PLAY THEME 1: "+themeKey)
-			if themeKey != "":
-				util.logDebug("PLAY THEME 2")
-				self.plexee.playTheme(self.server.getUrl(themeKey))
+			self.plexee.player.playTheme(item)
 
 	def onLoad(self):
 		pass
 		
 	def onUnload(self):
-		self.plexee.stopTheme()
+		self.plexee.player.stopTheme()
 	
 	def play(self):
 		mc.ShowDialogWait()
@@ -318,7 +982,6 @@ class PlexeePlayDialog(PlexeeDialog):
 			audioIndex = int(self.audioList.GetItem(audioIndex).GetProperty("id"))
 		else:
 			audioIndex = 0
-
 		mediaIndex = self.mediaList.GetFocusedItem()
 		self.refreshOnDeck = self.plexee.playVideo(self.server, self.playItem, mediaIndex, subtitleIndex, audioIndex)
 
@@ -335,13 +998,17 @@ class PlexeePlayDialog(PlexeeDialog):
 			self.subtitleList.SetItems(mediaOptions.subtitleItems)
 			self.audioList.SetItems(mediaOptions.audioItems)
 
+##
+#The dialog object for the for Connection Dialog screen
+#
 class PlexeeConnectionDialog(PlexeeDialog):
 
 	def getId(self): return Plexee.DIALOG_CONNECT_ID
 	
 	def __init__(self, plexee): PlexeeDialog.__init__(self, plexee)
 	
-	def doInit(self, window):
+	def doInit(self):
+		window = self.window
 		self.errorLabel = window.GetLabel(300)
 		self.closeButton = window.GetButton(402)
 		self.nextErrorButton = window.GetControl(401)
@@ -441,14 +1108,30 @@ class PlexeeConnectionDialog(PlexeeDialog):
 		finally:
 			mc.HideDialogWait()
 
+##
+#The dialog object for the for Settings Dialog screen
+#
 class PlexeeSettingsDialog(PlexeeDialog):
 
 	def getId(self): return Plexee.DIALOG_SETTINGS_ID
 	
 	def __init__(self, plexee): PlexeeDialog.__init__(self, plexee)
 	
-	def doInit(self, window):
-		#connection settings
+	# def _showNotification(self, msg):
+		# dlg = self.window.GetControl(98)
+		# lbl = self.window.GetLabel(99)
+		# lbl.SetLabel(msg)
+		# dlg.SetVisible(True)
+		# xbmc.sleep(2000)
+		# dlg.SetVisible(False)
+		
+	# def showNotification(self, msg):
+		# t = threading.Thread(target=self._showNotification, args=(msg))
+		# t.start()
+	
+	def doInit(self):
+		window = self.window
+		#Connect Settings
 		self.discoverClients = window.GetToggleButton(100)
 		self.discoverClientTime = window.GetEdit(101)
 		self.manualClient = window.GetToggleButton(102)
@@ -457,19 +1140,68 @@ class PlexeeSettingsDialog(PlexeeDialog):
 		self.myPlex = window.GetToggleButton(105)
 		self.myPlexUsername = window.GetEdit(106)
 		self.myPlexPassword = window.GetEdit(107)
-		self.photoSettingsButton = window.GetButton(43)
 		#Photo Settings
+		self.photoSettingsButton = window.GetButton(43)
 		self.slideShowZoom = window.GetToggleButton(300)
 		self.slideShowDelay = window.GetEdit(301)
+		#Experience Settings
+		self.playThemes = window.GetToggleButton(200)
+		self.queueAudio = window.GetToggleButton(201)
+		#Advanced Settings
+		self.advancedSettingsButton = window.GetButton(49)
+		self.debugToggle = window.GetToggleButton(900)
+		self.cacheToggle = window.GetToggleButton(901)
 
 	def onLoad(self):
 		self.connectOnClose = False
 		self.loadConnectSettings()
 		self.loadPhotoSettings()
+		self.loadExperienceSettings()
+		self.loadAdvancedSettings()
 		
 	def onUnload(self):
 		pass
 	
+	def loadAdvancedSettings(self):
+		config = self.plexee.config
+		self.cacheToggle.SetSelected(config.isEnableCacheOn())
+		self.debugToggle.SetSelected(config.isDebugOn())
+	
+	def showAdvancedSettings(self):
+		self.advancedSettingsButton.SetFocus()
+	
+	def saveAdvancedSettings(self):
+		config = self.plexee.config
+		if self.cacheToggle.IsSelected():
+			config.setEnableCacheOn()
+		else:
+			config.setEnableCacheOff()
+		if self.debugToggle.IsSelected():
+			config.setDebugOn()
+		else:
+			config.setDebugOff()
+		mc.ShowDialogNotification("Saved")
+
+	def loadExperienceSettings(self):
+		config = self.plexee.config
+		self.playThemes.SetSelected(config.isPlayThemesOn())
+		self.queueAudio.SetSelected(config.isQueueAudioOn())
+	
+	def showExperienceSettings(self):
+		self.experienceSettingsButton.SetFocus()
+	
+	def saveExperienceSettings(self):
+		config = self.plexee.config
+		if self.playThemes.IsSelected():
+			config.setPlayThemesOn()
+		else:
+			config.setPlayThemesOff()
+		if self.queueAudio.IsSelected():
+			config.setQueueAudioOn()
+		else:
+			config.setQueueAudioOff()
+		mc.ShowDialogNotification("Saved")
+
 	def loadPhotoSettings(self):
 		config = self.plexee.config
 		self.slideShowZoom.SetSelected(config.isSlideshowZoomOn())
@@ -490,6 +1222,7 @@ class PlexeeSettingsDialog(PlexeeDialog):
 			config.setSlideshowZoomOn()
 		else:
 			config.setSlideshowZoomOff()
+		mc.ShowDialogNotification("Saved")
 
 	def close(self):
 		PlexeeDialog.close(self)
@@ -547,17 +1280,24 @@ class PlexeeSettingsDialog(PlexeeDialog):
 		config.setMyPlexUser(self.myPlexUsername.GetText())
 		config.setMyPlexPassword(self.myPlexPassword.GetText())
 		self.connectOnClose = True
+		mc.ShowDialogNotification("Saved")
 
+##
+#The dialog object for the for Settings Dialog screen
+#
 class PlexeeConfig(object):
 	def __init__(self):
 		self.config = mc.GetApp().GetLocalConfig()
-	def _isFlagSet(self, name):
-		return (self.config.GetValue(name) != "")
+	def _isFlagSet(self, name, default=False):
+		val = self.config.GetValue(name)
+		if val == "" and default:
+				val = "1"
+		return (val == "1")
 	def _setFlag(self, name, bool):
 		if bool:
 			self.config.SetValue(name,"1")
 		else:
-			self.config.Reset(name)
+			self.config.SetValue(name,"0")
 		
 	def _setInt(self, name, val, friendlyName="", min="", max=""):
 		if friendlyName == "":
@@ -590,76 +1330,227 @@ class PlexeeConfig(object):
 		else:
 			return int(val)
 	
-	def isDebugOn(self): return self._isFlagSet("debug")
-	def setDebugOn(self):	self._setFlag("debug", True)
-	def setDebugOff(self):	self._setFlag("debug", False)
-
+	""" Internal state values """
 	def hasStarted(self): return self._isFlagSet("started")
 	def setHasStarted(self, bool): self._setFlag("started", bool)
-
-	def isAutoConnectOn(self): return self._isFlagSet("usediscover")
-	def setAutoConnectOn(self):	self._setFlag("usediscover", True)
-	def setAutoConnectOff(self):	self._setFlag("usediscover", False)
-
-	def isManualConnectOn(self): return self._isFlagSet("usemanual")
-	def setManualConnectOn(self):	self._setFlag("usemanual", True)
-	def setManualConnectOff(self):	self._setFlag("usemanual", False)
-	
-	def getManualPort(self): return self._getInt("manualport",32400)
-	def setManualPort(self, val): self._setInt("manualport",val,"Manual Port",1,65535)
-	
-	def getManualHost(self): return self.config.GetValue("manualhost")
-	def setManualHost(self, val): self.config.SetValue("manualhost",val)
-	
-	def isMyPlexConnectOn(self): return self._isFlagSet("usemyplex")
-	def setMyPlexConnectOn(self):	self._setFlag("usemyplex", True)
-	def setMyPlexConnectOff(self):	self._setFlag("usemyplex", False)
-
 	def isPlayingThemeOn(self): return self._isFlagSet("playingtheme")
 	def setPlayingThemeOn(self): self._setFlag("playingtheme", True)
 	def setPlayingThemeOff(self): self._setFlag("playingtheme", False)
-	
+
+	""" Connection Settings """
+	def isAutoConnectOn(self): return self._isFlagSet("usediscover")
+	def setAutoConnectOn(self):	self._setFlag("usediscover", True)
+	def setAutoConnectOff(self):	self._setFlag("usediscover", False)
+	def isManualConnectOn(self): return self._isFlagSet("usemanual")
+	def setManualConnectOn(self):	self._setFlag("usemanual", True)
+	def setManualConnectOff(self):	self._setFlag("usemanual", False)
+	def getManualPort(self): return self._getInt("manualport",32400)
+	def setManualPort(self, val): self._setInt("manualport",val,"Manual Port",1,65535)
+	def getManualHost(self): return self.config.GetValue("manualhost")
+	def setManualHost(self, val): self.config.SetValue("manualhost",val)
+	def isMyPlexConnectOn(self): return self._isFlagSet("usemyplex")
+	def setMyPlexConnectOn(self):	self._setFlag("usemyplex", True)
+	def setMyPlexConnectOff(self):	self._setFlag("usemyplex", False)
 	def getDiscoveryTime(self): return self._getInt("discovertime",1)
 	def setDiscoveryTime(self, val): return self._setInt("discovertime",val,"Discovery Time",1,5)
-		
 	def getMyPlexUser(self): return self.config.GetValue("myplexusername")
 	def setMyPlexUser(self, val): self.config.SetValue("myplexusername",val)
-	
 	def getMyPlexPassword(self): return self.config.GetValue("myplexpassword")
 	def setMyPlexPassword(self, val): self.config.SetValue("myplexpassword",val)
-		
 	def getLastSearch(self): return self.config.GetValue("lastsearch")
 	def setLastSearch(self, val): self.config.SetValue("lastsearch",val)
+
+	"""Experience Settings"""
+	def isPlayThemesOn(self): return self._isFlagSet("playthemes", True)
+	def setPlayThemesOn(self):	self._setFlag("playthemes", True)
+	def setPlayThemesOff(self):	self._setFlag("playthemes", False)
+	def isQueueAudioOn(self): return self._isFlagSet("queueaudio", True)
+	def setQueueAudioOn(self):	self._setFlag("queueaudio", True)
+	def setQueueAudioOff(self):	self._setFlag("queueaudio", False)
 
 	"""Photo Settings"""
 	def isSlideshowZoomOn(self): return self._isFlagSet("slideshowzoom")
 	def setSlideshowZoomOn(self):	self._setFlag("slideshowzoom", True)
 	def setSlideshowZoomOff(self):	self._setFlag("slideshowzoom", False)
-	
 	def getSlideShowDelaySec(self): return self._getInt("slideshowdelay",5)
 	def setSlideShowDelaySec(self, val): return self._setInt("slideshowdelay",val,"SlideShow Delay",1,120)
 	
+	"""Advanced Settings"""
+	def isDebugOn(self): return self._isFlagSet("debug")
+	def setDebugOn(self):	self._setFlag("debug", True)
+	def setDebugOff(self):	self._setFlag("debug", False)
+	def isEnableCacheOn(self): return self._isFlagSet("enablecache", True)
+	def setEnableCacheOn(self):	self._setFlag("enablecache", True)
+	def setEnableCacheOff(self):	self._setFlag("enablecache", False)
+
+##
+#Provides a common interface for the Boxee player
+#
+class PlexeePlayer(object):
+	def __init__(self, plexee):
+		self.plexee = plexee
+		self.shouldWait = True
+		self.isPlayingTheme = False
+		self.musicList = mc.PlayList(mc.PlayList.PLAYLIST_MUSIC)
+		self.videoList = mc.PlayList(mc.PlayList.PLAYLIST_VIDEO)
+	
+	def stopWaiting(self):
+		self.shouldWait = False
+	
+	def playTheme(self, item):
+		#Check if user wants themes played
+		if not self.plexee.config.isPlayThemesOn():
+			return
+		
+		#If the player is already playing - and it's not another theme then don't play
+		if mc.GetPlayer().IsPlaying() and not self.isPlayingTheme():
+			return
+			
+		url = ""
+		title = item.GetProperty("title")
+		server = self.plexee.getItemServer(item)
+		if not server:
+			return
+			
+		themeKey = item.GetProperty("theme")
+		if themeKey == "":
+			themeKey = item.GetProperty("grandparenttheme")
+		if themeKey == "":
+			self.stopTheme()
+			return
+		machineIdentifier = item.GetProperty("machineidentifier")
+		url = server.getUrl(themeKey)
+		li = mc.ListItem(mc.ListItem.MEDIA_AUDIO_MUSIC)
+		li.SetPath(url)
+		li.SetTitle(title)
+		li.SetLabel(title)
+		li.SetProperty("machineidentifier", machineIdentifier)
+		li.SetContentType("audio/mpeg")
+		
+		util.logDebug("Playing theme: %s, URL: %s" % (title, url))
+		self.isPlayingTheme = True
+		mc.GetPlayer().PlayInBackground(li)
+		self.plexee.config.setPlayingThemeOn()
+
+	def stopTheme(self):
+		if self.isPlayingTheme:
+			util.logDebug("Stopping theme")
+			mc.GetPlayer().Stop()
+			xbmc.sleep(200)
+		self.isPlayingTheme = False
+		self.plexee.config.setPlayingThemeOff()
+			
+	def getMusicPlaylist(self):	return self.musicList
+	def getVideoPlaylist(self):	return self.videoList
+	def clearMusicList(self): self.musicList.Clear()
+	def clearVideoList(self): self.videoList.Clear()
+		
+	def addMusic(self, item):
+		self.musicList.Add(item)
+
+	def playMusicItems(self, items, startIndex = 0):
+		self.stopTheme()
+		self.clearMusicList()
+		for item in items:
+			self.addMusic(item)
+		self.playMusicList(startIndex)
+		
+	def playVideoItems(self, items, startIndex = 0):
+		self.stopTheme()
+		self.clearVideoList()
+		for item in items:
+			self.addVideo(item)
+		self.playVideoList(startIndex)
+
+	def queueMusicItems(self, items, showQueueNotification = True):
+		for item in items:
+			self.addMusic(item)
+			if showQueueNotification:
+				mc.ShowDialogNotification("Queued track: "+item.GetTitle())
+
+	def addVideo(self, item): self.videoList.Add(item)
+	def playMusicList(self, index = 0, onPlay = None, args = None):
+		self.stopTheme()
+		self.musicList.Play(index)
+		self.waitForPlayer(onPlay, args)
+	def playVideoList(self, index = 0, onPlay = None, args = None):
+		self.stopTheme()
+		self.videoList.Play(index)
+		self.waitForPlayer(onPlay, args)
+	
+	def pause(self):
+		mc.GetPlayer().Pause()
+
+	def _removeItem(self, playlist, items, removeIndex):
+		playlist.Clear()
+		for i in range(len(self.getContentList().GetItems())):
+			if i != removeIndex:
+				playlist.Add(self.getContentList().GetItem(i))
+	
+	def removeMusicItem(self, items, removeIndex): self._removeItem(self.musicList, items, removeIndex)
+	def removeVideoItem(self, items, removeIndex): self._removeItem(self.videoList, items, removeIndex)
+	
+	def getCurrentMusicListItem(self): return self._getCurrentListItem(self.musicList)
+	def getCurrentVideoListItem(self): return self._getCurrentListItem(self.videoList)
+	def _getCurrentListItem(self, playlist): return playlist.GetItem(playlist.GetPosition())
+	
+	def getDisplayMusicList(self): return self._getDisplayList(self.musicList)
+	def getDisplayVideoList(self): return self._getDisplayList(self.videoList)
+	def _getDisplayList(self, playlist):
+		childItems = mc.ListItems()
+		for i in range(playlist.Size()):
+			item = playlist.GetItem(i)
+			item.SetProperty('position',str(i))
+			thumbUrl = item.GetProperty("thumburl")
+			if thumbUrl != "":
+				item.SetThumbnail(thumbUrl)
+				item.SetImage(0, thumbUrl)
+			childItems.append(item)
+		return childItems
+	
+	def waitForPlayer(self, onPlay, args):
+		t = threading.Thread(target=self._waitForPlayer, args=(onPlay,args))
+		t.start()
+	
+	def _waitForPlayer(self, onPlay, args):
+		self.shouldWait = True
+		#ok wait for player to start
+		loopTimeout = 10*60 #Wait a maximum of 10 minutes
+		loop = 0
+		util.logDebug("Waiting on player...")
+		while not xbmc.Player().isPlaying() and self.shouldWait:
+			xbmc.sleep(1000)
+			loop = loop + 1
+			if loop > loopTimeout:
+				break
+		
+		if loop <= loopTimeout and self.shouldWait:
+			util.logDebug("Player started...")
+			if onPlay != None:
+				onPlay(args)
+		elif not self.shouldWait:
+			util.logDebug("Likely exited player...")
+			xbmc.Player().stop()
+		else:
+			util.logDebug("Timed out waiting on Player to start - progress updating may not work...")	
+	
+##
+#The core of the Plexee application
+#	
 class Plexee(object):
 	"""
 	Interface with Boxee system
 	"""
 	WINDOW_HOME_ID = 14000
 	WINDOW_DIRECTORY_ID = 14001
-	WINDOW_SEASON_ID = 14002
 	WINDOW_ALBUM_ID = 14003
+	WINDOW_PLAYLIST_ID = 14004
 
 	DIALOG_CONNECT_ID = 15002
 	DIALOG_PHOTO_ID = 15003
 	DIALOG_EXIT_ID = 14010
 	DIALOG_SETTINGS_ID = 15000
 	DIALOG_PLAY_ID = 15001
-	
-	WINDOW_IDS = {
-		"home": WINDOW_HOME_ID,
-		"default": WINDOW_DIRECTORY_ID,
-		"episode": WINDOW_SEASON_ID,
-		"track": WINDOW_ALBUM_ID
-	}
 	
 	DIRECTORY_TITLE_ID = 100
 	DIRECTORY_SECONDARY_ID = 200
@@ -673,66 +1564,79 @@ class Plexee(object):
 	
 	THUMB_WIDTH = 400
 	THUMB_HEIGHT = 225
-	ART_WIDTH = 1280
-	ART_HEIGHT = 720
+	ART_WIDTH = 980
+	ART_HEIGHT = 580
 
 	MENU_SECTIONS = "SECTION"
 	MENU_DIRECT = "DIRECT"
 	
-	CORE_VIDEO_ATTRIBUTES = ['machineIdentifier','viewGroup','title','key','thumb','art','theme','type','title1','title2','size','index','search','secondary','parentKey','duration','tag','grandparentTheme', 'librarySectionID']
+	CORE_VIDEO_ATTRIBUTES = ['playlistType','machineIdentifier','viewGroup','title','ratingKey','key','thumb','art','theme','type','title1','title2','size','index','search','secondary','parentKey','duration','tag','grandparentTheme', 'librarySectionID', 'playlistItemID']
+	ADDITIONAL_GENERAL_ATTRIBUTES = ['art','title','audioChannels','contentRating','year','summary','viewOffset','rating','tagline']
+	ADDITIONAL_EPISODE_ATTRIBUTES = ['grandparentTitle','index','parentIndex','leafCount','viewedLeafCount']
+	
+	DISPLAY_AS_CONTENT = ["artist","album","photo","season","artist_search","person_search","albums"]
 	
 	def __init__(self):
 		self.plexManager = plex.PlexManager()
 		self.config = PlexeeConfig()
 		self._windows = dict()
-
-	def getHomeWindow(self):
-		id = Plexee.WINDOW_HOME_ID
-		if not id in self._windows:
-			self._windows[id] = PlexeeHomeWindow(self)
-		return self._windows[id]
+		self.player = PlexeePlayer(self)
+		self.cache = PlexeeCache(self)
+		self._windows[Plexee.WINDOW_HOME_ID] = PlexeeHomeWindow(self)
+		self._windows[Plexee.WINDOW_ALBUM_ID] = PlexeeAlbumWindow(self)
+		self._windows[Plexee.WINDOW_DIRECTORY_ID] = PlexeeDirectoryWindow(self)
+		self._windows[Plexee.WINDOW_PLAYLIST_ID] = PlexeePlaylistWindow(self)
+		self._windows[Plexee.DIALOG_SETTINGS_ID] = PlexeeSettingsDialog(self)
+		self._windows[Plexee.DIALOG_CONNECT_ID] = PlexeeConnectionDialog(self)
+		self._windows[Plexee.DIALOG_PLAY_ID] = PlexeePlayDialog(self)
+		self._windows[Plexee.DIALOG_PHOTO_ID] = PlexeePhotoDialog(self)
 		
-	def getDirectoryWindow(self):
-		id = Plexee.WINDOW_DIRECTORY_ID
-		if not id in self._windows:
-			self._windows[id] = PlexeeDirectoryWindow(self)
-		return self._windows[id]
 
-	def getSettingsDialog(self):
-		id = Plexee.DIALOG_SETTINGS_ID
-		if not id in self._windows:
-			self._windows[id] = PlexeeSettingsDialog(self)
-		return self._windows[id]
+	def getHomeWindow(self): return self._windows[Plexee.WINDOW_HOME_ID]
+	def getDirectoryWindow(self): return self._windows[Plexee.WINDOW_DIRECTORY_ID]
+	def getAlbumWindow(self): return self._windows[Plexee.WINDOW_ALBUM_ID]
+	def getPlaylistWindow(self): return self._windows[Plexee.WINDOW_PLAYLIST_ID]
+	def getSettingsDialog(self): return self._windows[Plexee.DIALOG_SETTINGS_ID]
+	def getConnectionDialog(self): return self._windows[Plexee.DIALOG_CONNECT_ID]
+	def getPlayDialog(self): return self._windows[Plexee.DIALOG_PLAY_ID]
+	def getPhotoDialog(self): return self._windows[Plexee.DIALOG_PHOTO_ID]
+
+	def getItemServer(self, item):
+		machineIdentifier = item.GetProperty("machineidentifier")
+		return self.plexManager.getServer(machineIdentifier)
 	
-	def getConnectionDialog(self):
-		id = Plexee.DIALOG_CONNECT_ID
-		if not id in self._windows:
-			self._windows[id] = PlexeeConnectionDialog(self)
-		return self._windows[id]
-
-	def getPlayDialog(self):
-		id = Plexee.DIALOG_PLAY_ID
-		if not id in self._windows:
-			self._windows[id] = PlexeePlayDialog(self)
-		return self._windows[id]
+	def clearWindowState(self):
+		for w in self._windows:
+			win = self._windows[w]
+			isHome = win.getId() == Plexee.WINDOW_HOME_ID
+			if win.window:
+				win.window.ClearStateStack(isHome)
+	
+	def getDisplayingCollection(self, clickedItem, titleItem):
+		displayingCollection = titleItem.GetProperty("viewgroup")
+		#Search
+		if displayingCollection == "":
+			type = clickedItem.GetProperty("type")
+			if type == "person":
+				displayingCollection = "person_search"
+			elif type == "artist":
+				displayingCollection = "artist_search"
+			else:
+				displayingCollection = type
+			if displayingCollection == "":
+				displayingCollection = clickedItem.GetProperty("itemtype").lower()
+				
+		#Forces items album, photo, season to be displayed as content
+		isMenuCollection = (titleItem.GetProperty("ismenu") == "1")
+		if isMenuCollection and displayingCollection not in Plexee.DISPLAY_AS_CONTENT:
+			displayingCollection = "menu"
+		return displayingCollection
 
 	def getWindow(self, id):
 		if not id in self._windows:
-			if id == Plexee.WINDOW_DIRECTORY_ID:
-				self._windows[id] = PlexeeDirectoryWindow(self)
-			elif id == Plexee.WINDOW_ALBUM_ID:
-				self._windows[id] = PlexeeAlbumWindow(self)
-			elif id == Plexee.WINDOW_SEASON_ID:
-				self._windows[id] = PlexeeSeasonWindow(self)
-			elif id == Plexee.WINDOW_HOME_ID:
-				self._windows[id] = PlexeeHomeWindow(self)
-			else:	
-				return None
+			return None
 		return self._windows[id]
 		
-	def getWindowID(self, view):
-		return Plexee.WINDOW_IDS.get(view, Plexee.WINDOW_DIRECTORY_ID)
-
 	def _myplex(self):
 		return self.plexManager.myplex
 
@@ -752,8 +1656,9 @@ class Plexee(object):
 				result = result + val
 		return result
 
-	def isEpisode(self, listItem):
-		return listItem.GetProperty('type') == 'episode'
+	def isEpisode(self, listItem): return listItem.GetProperty('type') == 'episode'
+	def isSeason(self, listItem): return listItem.GetProperty('type') == 'season'
+	def isShow(self, listItem): return listItem.GetProperty('type') == 'show'
 		
 	def getAdditionalVideoDetails(self, server, listItem):
 		"""
@@ -774,9 +1679,7 @@ class Plexee(object):
 		
 		tree = ElementTree.fromstring(data)[0]
 		#Set video specific
-		generalAttribs = ['title','audioChannels','contentRating','year','summary','viewOffset','rating','tagline']
-		episodeAttribs = ['grandparentTitle','index','parentIndex','leafCount','viewedLeafCount']
-		for a in (generalAttribs + episodeAttribs):
+		for a in (Plexee.ADDITIONAL_GENERAL_ATTRIBUTES + Plexee.ADDITIONAL_EPISODE_ATTRIBUTES):
 			if tree.attrib.has_key(a):
 				li.SetProperty(a.lower(), util.cleanString(tree.attrib[a]))
 	
@@ -789,14 +1692,10 @@ class Plexee(object):
 			li.SetProperty('title',li.GetProperty('grandparenttitle'))
 	
 		#Set images
-		art = li.GetProperty("art")
-		thumb = li.GetProperty("thumb")
-		if thumb != "":
-			li.SetImage(0, server.getThumbUrl(thumb, 450, 500))
-		if art != "":
-			url = server.getThumbUrl(art, 980, 580)
-			util.logDebug("ART: "+url)
-			li.SetImage(1, url)
+		url = self._getThumbUrl(server, li)
+		if url: li.SetImage(0, url)
+		url = self._getArtUrl(server, li)
+		if url: li.SetImage(1, url)
 	
 		#Resolution
 		mediaNode = tree.find("Media")
@@ -832,11 +1731,57 @@ class Plexee(object):
 			li.SetProperty("roundedrating", str(int(round(float(tree.attrib["rating"])))))	
 	
 		return li
+	
+	#<Artist thumb="/music/iTunes/thumbs/album/48th%20Highlanders.Scotland%20the%20Brave%20-%20Bagpipes.jpg" titleSort="48th Highlanders" key="48th%20Highlanders" artist="48th Highlanders"/>
+	def _createBaseItunesItem(self, server, element, sourceUrl):
+		listItem = mc.ListItem(mc.ListItem.MEDIA_UNKNOWN)
+		listItem.SetProperty("itemtype", element.tag)
+		listItem.SetProperty("machineidentifier", util.cleanString(server.machineIdentifier))
+		if element.attrib.has_key("key"):
+			listItem.SetPath(server.joinUrl(sourceUrl, element.attrib["key"]))
+			listItem.SetProperty("key",server.joinUrl(sourceUrl, element.attrib["key"]))
+		listItem.SetProperty("thumb", util.cleanString(element.attrib["thumb"]))
+		if element.attrib.has_key("thumb"):
+			listItem.SetImage(0, self._getThumbUrl(server,listItem))
+		propertyMap = ["track","album","artist","index","duration"]
+		for property in propertyMap:
+			if element.attrib.has_key(property):
+				listItem.SetProperty(property, util.cleanString(element.attrib[property]))
+		return listItem
 		
-	def _createListItem(self, server, element, sourceUrl):
+	def _createItunesArtistItem(self, server, element, sourceUrl):
+		listItem = self._createBaseItunesItem(server, element, sourceUrl)
+		listItem.SetProperty("title", util.cleanString(element.attrib["artist"]))
+		return listItem
+	
+	def _createItunesAlbumItem(self, server, element, sourceUrl):
+		listItem = self._createBaseItunesItem(server, element, sourceUrl)
+		listItem.SetProperty("title", util.cleanString(element.attrib["album"]))
+		return listItem
+	
+	def _createItunesTrackItem(self, server, element, sourceUrl):
+		listItem = self._createBaseItunesItem(server, element, sourceUrl)
+		listItem.SetProperty("title", util.cleanString(element.attrib["track"]))
+		duration = ""
+		if element.attrib.has_key("totalTime") and element.attrib["totalTime"].isdigit():
+			#Format millisecond duration
+			duration = util.msToFormattedDuration(int(element.attrib["totalTime"]),False)
+		listItem.SetProperty("durationformatted", duration)
+		return listItem
+
+	def _createListItem(self, server, element, sourceUrl, additionalAttributes = []):
 		"""
 		Create list items from the Plex server and URL to display
 		"""
+		isItunesPlugin = ("/music/itunes" in sourceUrl.lower())
+		if isItunesPlugin:
+			if element.tag == "Artist":
+				return self._createItunesArtistItem(server, element, sourceUrl)
+			elif element.tag == "Album":
+				return self._createItunesAlbumItem(server, element, sourceUrl)
+			elif element.tag == "Track":
+				return self._createItunesTrackItem(server, element, sourceUrl)
+			
 		# Important Properties
 		listItem = mc.ListItem(mc.ListItem.MEDIA_UNKNOWN)
 		listItem.SetProperty("itemtype", element.tag)
@@ -844,15 +1789,26 @@ class Plexee(object):
 		if element.attrib.has_key("key"):
 			listItem.SetPath(server.joinUrl(sourceUrl, element.attrib["key"]))
 	
-		for attribute in Plexee.CORE_VIDEO_ATTRIBUTES:
-			if element.attrib.has_key(attribute):
-				#util.logDebug('Property [%s]=[%s]' % (attribute.lower(), util.cleanString(element.attrib[attribute])))
-				listItem.SetProperty(attribute.lower(), util.cleanString(element.attrib[attribute]))
+		#for attribute in (Plexee.CORE_VIDEO_ATTRIBUTES + additionalAttributes):
+		for attribute in element.keys():
+			#if element.attrib.has_key(attribute):
+			#util.logDebug('Property [%s]=[%s]' % (attribute.lower(), util.cleanString(element.attrib[attribute])))
+			listItem.SetProperty(attribute.lower(), util.cleanString(element.attrib[attribute]))
 
+		if (self.isSeason(listItem) or self.isShow(listItem)) and listItem.GetProperty("leafcount") != "" and listItem.GetProperty("viewedleafcount") != "":
+			count = int(listItem.GetProperty("leafcount")) - int(listItem.GetProperty("viewedleafcount"))
+			listItem.SetProperty("unwatchedcount", str(count)) 
+			
 		#Special titles
 		if self.isEpisode(listItem):
 			epTitle = util.formatEpisodeTitle(season="", episode=listItem.GetProperty('index'), title=listItem.GetProperty('title'))
 			listItem.SetProperty("title",epTitle)
+			#is it watched?
+			data, u = server.getData(listItem.GetProperty("key"))
+			if data:
+				vals = ElementTree.fromstring(data)[0]
+				if not vals.attrib.has_key("viewCount"):
+					listItem.SetProperty("notviewed","1")
 		
 		if listItem.GetProperty('type') == 'track':
 			#Duration
@@ -863,8 +1819,16 @@ class Plexee(object):
 			listItem.SetProperty("durationformatted", duration)
 		
 		# Image paths
-		if element.attrib.has_key("thumb"):
-			listItem.SetImage(0, server.getThumbUrl(listItem.GetProperty("thumb"), self.THUMB_WIDTH, self.THUMB_HEIGHT))
+		thumbUrl = ""
+		if listItem.GetProperty('thumb') != "":
+			thumbUrl = self._getThumbUrl(server, listItem)
+		elif listItem.GetProperty('art') != "":
+			thumbUrl = self._getThumbUrl(server, listItem, "art")
+		listItem.SetProperty("thumburl", thumbUrl)
+		
+		if thumbUrl != "":
+			#listItem.SetThumbnail(thumbUrl)
+			listItem.SetImage(0, thumbUrl)
 			
 		return listItem
 
@@ -881,27 +1845,43 @@ class Plexee(object):
 			listItem = mc.ListItem(mc.ListItem.MEDIA_UNKNOWN)
 			listItem.SetProperty("itemtype", "QueueItem")
 			listItem.SetPath('1')
-			attribs = ['machineidentifier','viewGroup','summary','id','title','key','thumb','type','title1','title2','size','index','search','secondary','parentKey']
+			attribs = ['machineidentifier','viewGroup','summary','id','title','key','thumb','type','title1','title2','size','index','search','secondary','parentKey','art']
 			for attribute in attribs:
 				if child.attrib.has_key(attribute):
 					#util.logDebug('Property [%s]=[%s]' % (attribute.lower(), util.cleanString(element.attrib[attribute])))
 					listItem.SetProperty(attribute.lower(), util.cleanString(child.attrib[attribute]))
-
 			# Image paths
-			if child.attrib.has_key("thumb"):
-				listItem.SetImage(0, listItem.GetProperty("thumb"))
+			# if child.attrib.has_key("thumb"):
+				# listItem.SetImage(0, listItem.GetProperty("thumb"))
+			# elif child.attrib.has_key("art"):
+				# listItem.SetImage(0, listItem.GetProperty("art"))
+				
 				
 			childListItems.append(listItem)
 
 		return childListItems
 
-	def getListItems(self, server, data, sourceUrl, titleListItem = None):
+	def getMenuItems(self, server, type, key):
+		data = ""
+		url = ""
+		if type == Plexee.MENU_SECTIONS:
+			data, url = server.getSectionData(key)
+		elif type == Plexee.MENU_DIRECT:
+			data, url = server.getData(key)
+		util.logDebug("Updating menu using data from url "+url)
+		return self.getListItems(server, data, url).childListItems
+
+	def getListItems(self, server, data, sourceUrl, titleListItem = None, additionalAttributes = []):
 		"""
 		Create items to display from a Plex server
 		"""
 		if not data:
 			return None
-			
+		dataHash = util.hash(data)
+		windowInformation = self.cache.getItem(sourceUrl, dataHash)
+		if windowInformation:
+			return windowInformation
+
 		tree = ElementTree.fromstring(data)
 		if not titleListItem:
 			titleListItem = self._createListItem(server, tree, sourceUrl)
@@ -911,13 +1891,15 @@ class Plexee(object):
 		#Set title item art/thumb to display if needed
 		titleListItem.SetProperty("art", tree.attrib.get("art",""))
 		titleListItem.SetProperty("thumb", tree.attrib.get("thumb",""))
+		dataHash = util.hash(data)
+		titleListItem.SetProperty("hash", dataHash)
 		
 		childListItems = mc.ListItems()
 		hasChildDirectories = True
-		childItems = ["Directory","Photo"]
+		childItems = ["Directory","Photo","Album"]
 		#If all directories (with no duration) treat as menu
 		for child in tree:
-			childListItem = self._createListItem(server, child, sourceUrl)
+			childListItem = self._createListItem(server, child, sourceUrl, additionalAttributes)
 			childListItems.append(childListItem)
 			hasChildDirectories = (hasChildDirectories and childListItem.GetProperty("itemtype") in childItems and childListItem.GetProperty("duration") == "")
 
@@ -926,11 +1908,10 @@ class Plexee(object):
 			titleListItem.SetProperty("ismenu", "1")
 		elif hasChildDirectories:
 			titleListItem.SetProperty("ismenu", "1")
-
-		titleListItems = mc.ListItems()
-		titleListItems.append(titleListItem)
-
-		return WindowInformation(titleListItems, childListItems)
+		
+		windowInformation = WindowInformation(titleListItem, childListItems, dataHash)
+		self.cache.addItem(sourceUrl, windowInformation)
+		return windowInformation
 
 	def getQueueMediaOptions(self, videoItem, mediaIndex = 0):
 		"""
@@ -1112,57 +2093,37 @@ class Plexee(object):
 			
 		return MediaOptions(mediaItems, subtitleItems, audioItems);
 	
-	def stopTheme(self):
-		if self.config.isPlayingThemeOn():
-			self.config.setPlayingThemeOff()
-			mc.GetPlayer().Stop()
-		
-	def playTheme(self, seasonItem):
-		if mc.GetPlayer().IsPlaying():
-			return
-		url = ""
-		title = ""
-		if type(seasonItem) is not str:
-			machineIdentifier = seasonItem.GetProperty("machineidentifier")
-			server = self.plexManager.getServer(machineIdentifier)
-			if not server:
-				return
-			
-			themeKey = seasonItem.GetProperty("theme")
-			if themeKey == "":
-				self.stopTheme()
-				return
-			url = server.getUrl(seasonItem.GetProperty("theme"))
-			title = seasonItem.GetProperty("title1")
-		else:
-			url = seasonItem
-			
-		li = mc.ListItem(mc.ListItem.MEDIA_AUDIO_MUSIC)
-		li.SetPath(url)
-		li.SetTitle(title)
-		li.SetLabel(title)
-		li.SetContentType("audio/mpeg3")
-		xbmc.Player(xbmc.PLAYER_CORE_MPLAYER).play(url)
-		self.config.setPlayingThemeOn()
-
-	def monitorPlayback(self, server, key, offset, totalTimeSecs, isDirectStream):
+	def monitorPlayback(self, args):
 		"""
 		Update the played progress every 5 seconds while the player is playing
 		"""
+		server = args['server']
+		key = args['key']
+		offset = args['offset']
+		subtitleKey = args['subtitleKey']
+		totalTimeSecs = args['totalTimeSecs']
+		isDirectStream = args['isDirectStream']
+		
+		if offset != 0:
+			util.logDebug("Seeking to resume position: "+str(offset))
+			xbmc.Player().seekTime(offset)
+		
+		if subtitleKey != "":
+			util.logInfo("Setting subtitles to: " + subtitleKey)
+			try:
+				xbmc.Player().setSubtitles(subtitleKey)
+			except:
+				util.logError("Error setting subtitle key=[%s]: %s" % (str(subtitleKey), sys.exc_info()[0]))
+				mc.ShowDialogNotification("Failed to set subtitles")
+		
 		progress = 0
 		util.logDebug("Monitoring playback to update progress...")
 		#Whilst the file is playing back
 		player = mc.GetPlayer()
 		isWatched = False
-		if isDirectStream:
-			currentTimeSecs = offset
 		while player.IsPlaying():
 			#Get the current playback time
-			if not isDirectStream:
-				currentTimeSecs = int(player.GetTime())
-			elif not player.IsPaused():
-				#Can't get time from player - so estimate progress
-				currentTimeSecs = currentTimeSecs + 5
+			currentTimeSecs = int(player.GetTime())
 			
 			if totalTimeSecs != 0:
 				progress = int(( float(currentTimeSecs) / float(totalTimeSecs)) * 100)
@@ -1196,10 +2157,6 @@ class Plexee(object):
 			offset = offset/1000
 		
 		videoNode = ElementTree.fromstring(queueItem.GetProperty("videoNode"))
-		playlist = mc.PlayList(mc.PlayList.PLAYLIST_VIDEO)
-		playlist.Clear()
-
-		thumbnailUrl = queueItem.GetProperty("thumb")
 		description = util.cleanString(videoNode.attrib.get("summary",""))
 		title = util.cleanString(videoNode.attrib.get("title", "Plex Video"))
 		contentRating = util.cleanString(videoNode.attrib.get("contentRating",""))
@@ -1212,6 +2169,7 @@ class Plexee(object):
 			totalTimeSecs = totalTimeSecs/1000
 		
 		#Find all media parts to play e.g. CD1, CD2
+		self.player.clearVideoList()
 		partIndex = 0
 		for part in mediaNode.findall("Part"):
 			partId = part.attrib.get("id")
@@ -1228,7 +2186,6 @@ class Plexee(object):
 			partNode = tree.find("Video/Media/Part")			
 			
 			li.SetPath(partNode.attrib.get("key"))
-			li.SetThumbnail(thumbnailUrl)
 			li.SetDescription(description, False)
 			li.SetContentRating(contentRating)
 			
@@ -1239,35 +2196,12 @@ class Plexee(object):
 				li.SetEpisode(int(videoNode.attrib.get('index')))
 				li.SetSeason(int(videoNode.attrib.get('parentIndex')))
 			
-			playlist.Add(li)
+			self.player.addVideo(li)
 			util.logInfo("Added item to play: "+li.GetPath())
 			partIndex = partIndex + 1
 
-		playlist.Play(0)
-		
-		#ok wait for player to start
-		loop = 0
-		loopTimeout = 20
-		util.logDebug("Waiting on player...")
-		while not xbmc.Player().isPlaying():
-			xbmc.sleep(1000)
-			loop = loop + 1
-			if loop > loopTimeout:
-				break
-		
-		if loop <= loopTimeout:
-			util.logDebug("Player started...")
-		else:
-			util.logDebug("Timed out waiting on Player to start - progress updating may not work...")
-		
-		#set any offset
-		#Set seek and subtitles
-		if offset != 0 and audioIndex == 0:
-			util.logDebug("Seeking to resume position")
-			xbmc.Player().seekTime(offset)
-
-		#Set subtitles
 		subtitleKey = ""
+		#Set subtitles
 		if subtitleIndex != 0:
 			for s in mediaNode.findall("Part/Stream"):
 				if s.attrib.get("id") != str(subtitleIndex):
@@ -1275,29 +2209,37 @@ class Plexee(object):
 				subtitleKey = server.getUrl(s.attrib.get("key"))
 			
 		if subtitleKey == "":
-			import os
-			noSubPath = os.path.join(mc.GetApp().GetAppMediaDir(), 'media', 'no_subs.srt')
-			xbmc.Player().setSubtitles(noSubPath)
-		else:
-			util.logInfo("Setting subtitles to: " + subtitleKey)
-			xbmc.Player().setSubtitles(subtitleKey)
-
-	def playVideoItem(self, server, playItem,  mediaIndex, subtitleIndex, audioIndex, offset=0):
+			subtitleKey = os.path.join(mc.GetApp().GetAppMediaDir(), 'media', 'no_subs.srt')
+		key = videoNode.attrib.get('ratingKey')
+		args = dict()
+		args['server'] = server
+		args['key'] = key
+		args['offset'] = offset
+		args['subtitleKey'] = subtitleKey
+		args['totalTimeSecs'] = totalTimeSecs
+		args['isDirectStream'] = False
+		self.player.playVideoList(onPlay=self.monitorPlayback,args=args)
+	
+	def queueVideoItem(self, server, item):
+		self.playVideoItem(server, item, 0, 0, 0, 0, True)
+		
+	def playVideoItem(self, server, playItem,  mediaIndex, subtitleIndex, audioIndex, offset=0, queueOnly = False):
 		"""
 		Play the video item
 		"""
+		util.logDebug("Play video item")
 		data, url = server.getData(playItem.GetPath())
 		if not data:
 			return None
-			
+		
 		isDirectStream = False
 		if offset != 0:
 			offset = offset/1000
 
 		tree = ElementTree.fromstring(data)
 		videoNode = tree[0]
-		playlist = mc.PlayList(mc.PlayList.PLAYLIST_VIDEO)
-		playlist.Clear()
+		if not queueOnly:
+			self.player.clearVideoList()
 
 		thumbnailUrl = server.getThumbUrl(videoNode.attrib.get("thumb"), 100, 100)
 		description = util.cleanString(videoNode.attrib.get("summary",""))
@@ -1319,6 +2261,7 @@ class Plexee(object):
 			li = mc.ListItem(mc.ListItem.MEDIA_VIDEO_CLIP)
 			li.SetTitle(title)
 			li.SetLabel(title)
+			li.SetProperty('title',title)
 			
 			#Plex part links to actual part
 			if playItem.GetProperty('type') == 'clip':
@@ -1333,11 +2276,12 @@ class Plexee(object):
 			else:
 				if audioIndex != 0:
 					util.logDebug("Changing audio stream")
-					server.setAudioStream(partId, str(audioIndex))
-					server.setSubtitleStream(partId, str(subtitleIndex))
+					server.setAudioStream(self.plexManager, partId, str(audioIndex))
+					server.setSubtitleStream(self.plexManager, partId, str(subtitleIndex))
 					
-					url = server.getDirectStreamUrl(self.plexManager, videoId, mediaIndex, partIndex, offset)
-					li.SetPath(url)
+					url = server.getVideoDirectStreamUrl(self.plexManager, videoId, mediaIndex, partIndex, offset)
+					li.SetPath("playlist://"+urllib.quote_plus(url)+"?quality=A")
+					li.SetContentType('application/vnd.apple.mpegurl')
 					isDirectStream = True
 				else:
 					li.SetPath(server.getUrl(part.attrib.get("key")))
@@ -1352,35 +2296,12 @@ class Plexee(object):
 				li.SetEpisode(int(videoNode.attrib.get('index')))
 				li.SetSeason(int(videoNode.attrib.get('parentIndex')))
 			
-			playlist.Add(li)
+			self.player.addVideo(li)
 			partIndex = partIndex + 1
 
-		playlist.Play(0)
-		
-		#ok wait for player to start
-		loop = 0
-		loopTimeout = 20
-		util.logDebug("Waiting on player...")
-		while not xbmc.Player().isPlaying():
-			xbmc.sleep(1000)
-			loop = loop + 1
-			if loop > loopTimeout:
-				break
-		
-		if loop <= loopTimeout:
-			util.logDebug("Player started...")
-		else:
-			util.logDebug("Timed out waiting on Player to start - progress updating may not work...")
-		
-		#set any offset
+		subtitleKey = ""
 		if not isDirectStream:
-			#Set seek and subtitles
-			if offset != 0 and audioIndex == 0:
-				util.logDebug("Seeking to resume position")
-				xbmc.Player().seekTime(offset)
-
 			#Set subtitles
-			subtitleKey = ""
 			if subtitleIndex != 0:
 				for s in mediaNode.findall("Part/Stream"):
 					if s.attrib.get("id") != str(subtitleIndex):
@@ -1388,64 +2309,85 @@ class Plexee(object):
 					subtitleKey = server.getUrl(s.attrib.get("key"))
 				
 			if subtitleKey == "":
-				import os
-				noSubPath = os.path.join(mc.GetApp().GetAppMediaDir(), 'media', 'no_subs.srt')
-				xbmc.Player().setSubtitles(noSubPath)
-			else:
-				util.logInfo("Setting subtitles to: " + subtitleKey)
-				xbmc.Player().setSubtitles(subtitleKey)
-		
-		#Set audio
-		#Jinxo: Alas not supported...
-		#if audioIndex != 0:
-		#	xbmc.Player().setAudioStream(audioIndex)
-		#	util.logInfo('Setting audio to stream #: ' + str(audioIndex))
-		
-		#Monitor playback and update progress to plex
+				subtitleKey = os.path.join(mc.GetApp().GetAppMediaDir(), 'media', 'no_subs.srt')
 		key = videoNode.attrib.get('ratingKey')
-		#Spawn as seperate thread
-		monitorThread = threading.Thread(target=self.monitorPlayback, args=(server, key, offset, totalTimeSecs, isDirectStream))
-		monitorThread.start()
-		#self.monitorPlayback(server, key, offset, totalTimeSecs, isDirectStream)
 
-	def playMusicItem(self, listItem):
-		"""
-		Play the music item
-		"""
-		url = listItem.GetPath()
-		machineIdentifier = listItem.GetProperty("machineidentifier")
-		server = self.plexManager.getServer(machineIdentifier)
-
-		track = server.getPlexItem(url)
-		album = server.getPlexParent(track)
-		artist = server.getPlexParent(album)
-		if not track:				
-			return None
+		if not queueOnly:
+			args = dict()
+			args['server'] = server
+			args['key'] = key
+			args['offset'] = offset
+			args['subtitleKey'] = subtitleKey
+			args['totalTimeSecs'] = totalTimeSecs
+			args['isDirectStream'] = isDirectStream
 			
-		title = track.attrib.get("title", "Plex Track")
-		playlist = mc.PlayList(mc.PlayList.PLAYLIST_MUSIC)
-		playlist.Clear()
+			self.player.playVideoList(onPlay=self.monitorPlayback,args=args)
+		else:
+			return
 
-		for part in track.findall("Media/Part"):
+	def createAndAddMusicItem(self, items, listItem):
+		url = listItem.GetPath()
+		server = self.getItemServer(listItem)
+		isItunesTrack = False
+		
+		if listItem.GetProperty("track") == "":
+			track = server.getPlexItem(url)
+			if not track:				
+				return None
+			album = server.getPlexParent(track)
+			artist = server.getPlexParent(album)
+
+			album = album.attrib.get("title","")
+			artist = artist.attrib.get("title","")
+			title = track.attrib.get("title", "Plex Track")
+		else:
+			#Itunes track
+			isItunesTrack = True
+			title = listItem.GetProperty("track")
+			album = listItem.GetProperty("album")
+			artist = listItem.GetProperty("artist")
+			
+		if isItunesTrack:
 			li = mc.ListItem(mc.ListItem.MEDIA_AUDIO_MUSIC)
-			if album:
-				li.SetAlbum(album.attrib.get("title"))
-			if artist:
-				li.SetArtist(artist.attrib.get("title"))
+			li.SetAlbum(album)
+			li.SetArtist(artist)
 			li.SetTitle(title)
+			li.SetProperty('title', title)
+			li.SetProperty('index', listItem.GetProperty('index'))
+			li.SetProperty('durationformatted', listItem.GetProperty('durationformatted'))
+			li.SetProperty('art', listItem.GetProperty('art'))
+			li.SetProperty('thumb', listItem.GetProperty('thumb'))
+			li.SetProperty('thumburl', listItem.GetProperty('thumburl'))
+			#li.SetThumbnail(listItem.GetThumbnail())
+			li.SetProperty('key', listItem.GetProperty('key'))
+			li.SetProperty('machineidentifier', listItem.GetProperty('machineidentifier'))
 			li.SetLabel(title)
-			li.SetPath(server.getUrl(part.attrib.get('key')))
-			playlist.Add(li)
-			#util.logInfo("Added item to play: "+li.GetPath())
-
-		playlist.Play(0)
-
+			li.SetPath(listItem.GetProperty('key'))
+			items.append(li)
+		else:
+			for part in track.findall("Media/Part"):
+				li = mc.ListItem(mc.ListItem.MEDIA_AUDIO_MUSIC)
+				li.SetAlbum(album)
+				li.SetArtist(artist)
+				li.SetTitle(title)
+				li.SetProperty('title', title)
+				li.SetProperty('index', listItem.GetProperty('index'))
+				li.SetProperty('durationformatted', listItem.GetProperty('durationformatted'))
+				li.SetProperty('art', listItem.GetProperty('art'))
+				li.SetProperty('thumb', listItem.GetProperty('thumb'))
+				li.SetProperty('thumburl', listItem.GetProperty('thumburl'))
+				#li.SetThumbnail(listItem.GetThumbnail())
+				li.SetProperty('key', listItem.GetProperty('key'))
+				li.SetProperty('machineidentifier', listItem.GetProperty('machineidentifier'))
+				li.SetLabel(title)
+				li.SetPath(server.getUrl(part.attrib.get('key')))
+				items.append(li)
+	
 	def getPhotoList(self, listItem):
 		"""
 		Return a list of all photo items
 		"""
-		machineIdentifier = listItem.GetProperty("machineidentifier")
-		server = self.plexManager.getServer(machineIdentifier)
+		server = self.getItemServer(listItem)
 		data, url = server.getData(listItem.GetProperty('parentKey')+'/children')
 		if not data:
 			return None
@@ -1472,8 +2414,13 @@ class Plexee(object):
 		return list
 		
 	def _handleTrackItem(self, listItem):
-		self.config.setPlayingThemeOff()
-		self.playMusicItem(listItem)
+		items = mc.ListItems()
+		self.createAndAddMusicItem(items, listItem)
+		#Play or queue
+		if mc.GetPlayer().IsPlayingAudio() and self.config.isQueueAudioOn():
+			self.player.queueMusicItems(items)
+		else:
+			self.player.playMusicItems(items)
 
 	def activateWindow(self, id):
 		util.logDebug("Activate window %s started" % id)
@@ -1484,9 +2431,10 @@ class Plexee(object):
 	def _handlePhotoItem(self, listItem):
 		list = self.getPhotoList(listItem)
 		if list != None:
-			window = self.activateWindow(Plexee.DIALOG_PHOTO_ID)
-			window.GetList(Plexee.PHOTO_DIALOG_LIST_ID).SetItems(list)
-			window.GetList(Plexee.PHOTO_DIALOG_LIST_ID).SetFocusedItem(util.getIndex(listItem, list))
+			window = self.getPhotoDialog()
+			window.activate()
+			window.photoList.SetItems(list)
+			window.photoList.SetFocusedItem(util.getIndex(listItem, list))
 		else:
 			mc.ShowDialogNotification("Unable to display picture")
 
@@ -1496,8 +2444,7 @@ class Plexee(object):
 		"""
 		mc.ShowDialogWait()
 		
-		machineIdentifier = listItem.GetProperty("machineidentifier")
-		server = self.plexManager.getServer(machineIdentifier)
+		server = self.getItemServer(listItem)
 		#Get additional meta data for item to play
 		li = self.getAdditionalVideoDetails(server, listItem)
 		mediaOptions = self.getMediaOptions(server, li)
@@ -1529,31 +2476,41 @@ class Plexee(object):
 		mc.ShowDialogWait()
 		menuItems = windowInformation.childListItems
 		
-		if fromWindowId == self.getWindowID('home'):
+		if fromWindowId == Plexee.WINDOW_HOME_ID:
 			#Clicked on Movie etc.. from home menu
 			#Grab the menu items - and go to the first one
 			url = menuItems[0].GetPath()
 			data, url = server.getData(url)
-			windowInformation = self.getListItems(server, data, url)
 			directoryWindow = self.getDirectoryWindow()
-			directoryWindow.activate()
+			windowInformation = self.getListItems(server, data, url)
+			directoryWindow.activate(clickedItem, server)
 			directoryWindow.updateMenuItems(menuItems)
 			directoryWindow.updateContentItems(windowInformation)
 		else:
 			#Stay in same window, push state
 			directoryWindow = self.getWindow(fromWindowId)
 			if directoryWindow:
-				directoryWindow.activate()
+				directoryWindow.activate(clickedItem, server)
 				directoryWindow.updateMenuItems(menuItems)
 		mc.HideDialogWait()
 		return True
 
 	def _getArtUrl(self, server, listItem):
 		art = listItem.GetProperty("art")
-		util.logDebug("Art: "+art)
 		if art:
-			return server.getThumbUrl(art, 980, 580)
+			util.logDebug("Art: "+art)
+			return server.getThumbUrl(art, self.ART_WIDTH, self.ART_HEIGHT)
+		else:
+			return False
 		
+	def _getThumbUrl(self, server, listItem, property="thumb"):
+		key = listItem.GetProperty(property)
+		if key:
+			util.logDebug("Thumb: " + key)
+			return server.getThumbUrl(key, self.THUMB_WIDTH, self.THUMB_HEIGHT)
+		else:
+			return False
+
 	def _handleCollectionItem(self, clickedItem, fromWindowId):
 		"""
 		Handles clicking on a item that is a collection of other items
@@ -1570,8 +2527,7 @@ class Plexee(object):
 
 		mc.ShowDialogWait()
 		try:
-			machineIdentifier = clickedItem.GetProperty("machineidentifier")
-			server = self.plexManager.getServer(machineIdentifier)
+			server = self.getItemServer(clickedItem)
 
 			"""Get the item data and determine the action based on the content"""
 			data, url = server.getData(key)
@@ -1584,36 +2540,30 @@ class Plexee(object):
 				util.logDebug(msg)
 				mc.ShowDialogNotification(msg)
 				return
-			titleItem = windowInformation.titleListItems[0]
+
+			titleItem = windowInformation.titleListItem
 			isMenuCollection = (titleItem.GetProperty("ismenu") == "1")
 			isFromHomeWindow = (fromWindowId == Plexee.WINDOW_HOME_ID)
 			
 			"""Set the display collection type"""
-			displayingCollection = titleItem.GetProperty("viewgroup")
-			#Search
-			if displayingCollection == "":
-				type = clickedItem.GetProperty("type")
-				if type == "person":
-					displayingCollection = "person_search"
-				elif type == "artist":
-					displayingCollection = "artist_search"
-			#Forces items album, photo, season to be displayed as content
-			displayAsContent = ["album","photo","season"]
-			if isMenuCollection and displayingCollection not in displayAsContent:
-				displayingCollection = "menu"
-				
+			displayingCollection = self.getDisplayingCollection(clickedItem, titleItem)
+
 			"""Set the target window"""
-			nextWindowID = self.getWindowID(displayingCollection)
-			directoryWindow = self.getWindow(nextWindowID)
-			window = mc.GetActiveWindow()
-			if fromWindowId == nextWindowID and isMenuCollection:
-				mc.GetActiveWindow().PushState()
-			if nextWindowID != fromWindowId:
-				window = self.activateWindow(nextWindowID)
+			directoryWindow = None
+			if displayingCollection == "track":
+				directoryWindow = self.getAlbumWindow()
+			else:
+				directoryWindow = self.getDirectoryWindow()
+
+			isWindowChanging = (fromWindowId != directoryWindow.getId())
+			menuItems = None
+			
+			if not isWindowChanging and isMenuCollection and not isFromHomeWindow:
+				directoryWindow.pushState()
 
 			"""Debug"""
 			if self.config.isDebugOn():
-				msg = "Displaying Collection: %s, ViewGroup: %s, FromWindowId: %s, NextWindowId: %s" % (displayingCollection, titleItem.GetProperty("viewgroup"), str(fromWindowId), str(nextWindowID))
+				msg = "Displaying Collection: %s, ViewGroup: %s, FromWindowId: %s, NextWindowId: %s" % (displayingCollection, titleItem.GetProperty("viewgroup"), str(fromWindowId), str(directoryWindow.getId()))
 				util.logDebug(msg)
 
 			if displayingCollection == "menu":
@@ -1624,14 +2574,14 @@ class Plexee(object):
 				"""Displaying TV Show Seasons"""
 				if not titleItem.GetImage(0): titleItem.SetImage(0, self._getArtUrl(server, titleItem))
 				titleItem.SetImage(1, self._getArtUrl(server, titleItem))
-				self.playTheme(windowInformation.titleListItems[0])
+				self.player.playTheme(windowInformation.titleListItem)
 			
 			elif displayingCollection == "artist_search":
 				"""Displaying Artist"""
 				if not titleItem.GetImage(0): titleItem.SetImage(0, self._getArtUrl(server, titleItem))
 				titleItem.SetImage(1, self._getArtUrl(server, titleItem))
 				key = clickedItem.GetProperty('librarysectionid')
-				directoryWindow.updateMenu(Plexee.MENU_SECTIONS, server, key)
+				menuItems = self.getMenuItems(server, Plexee.MENU_SECTIONS, key)
 				titleItem.SetProperty("title2", clickedItem.GetProperty("title"))
 			
 			elif displayingCollection == "album":
@@ -1646,76 +2596,59 @@ class Plexee(object):
 			elif displayingCollection == "person_search":
 				"""Displaying person search results"""
 				#Clear menu
-				directoryWindow.updateMenuItems(mc.ListItems())
+				menuItems = mc.ListItems()
 				titleItem.SetProperty("title2", clickedItem.GetProperty("title"))
 
 			elif displayingCollection == "episode":
-				"""Episodes (a Season)"""
+				"""Episodes (in a Season)"""
+				if not isFromHomeWindow:
+					directoryWindow.pushState()
+				else:
+					self.player.playTheme(windowInformation.titleListItem)
 				if not titleItem.GetImage(0): titleItem.SetImage(0, self._getArtUrl(server, titleItem))
 				titleItem.SetImage(1, self._getArtUrl(server, titleItem))
-				if fromWindowId != self.getWindowID("episode"):
-					#Set the menu to the list of all seasons
-					key = clickedItem.GetProperty('parentkey')+"/children"
-					directoryWindow.updateMenu(Plexee.MENU_DIRECT, server, key)
+				#Set the menu to the list of all seasons
+				key = clickedItem.GetProperty('parentkey')+"/children"
+				menuItems = self.getMenuItems(server, Plexee.MENU_DIRECT, key)
 					
 			elif displayingCollection == "track":
 				"""Tracks (in an Album)"""
 				if not titleItem.GetImage(0): titleItem.SetImage(0, self._getArtUrl(server, titleItem))
 				titleItem.SetImage(1, self._getArtUrl(server, titleItem))
-				if fromWindowId != self.getWindowID("track"):
-					#Set the menu to the list of all albums
-					key = clickedItem.GetProperty('parentkey')
-					if key != "":
-						directoryWindow.updateMenu(Plexee.MENU_DIRECT, server, key+"/children")
-					else:
-						path = clickedItem.GetPath()
-						if path.endswith("allLeaves"):
-							directoryWindow.updateMenu(Plexee.MENU_DIRECT, server, path.replace("allLeaves","children"))
+				#Set the menu to the list of all albums
+				key = clickedItem.GetProperty('parentkey')
+				if key != "":
+					menuItems = self.getMenuItems(server, Plexee.MENU_DIRECT, key+"/children")
+				else:
+					path = clickedItem.GetPath()
+					if path.endswith("allLeaves"):
+						menuItems = self.getMenuItems(server, Plexee.MENU_DIRECT, path.replace("allLeaves","children"))
 
 			else:
 				"""All other collections"""
 				pass
 			
 			#Update the new/current window content
+			if isWindowChanging:
+				directoryWindow.activate(clickedItem, server)
+			directoryWindow.hide()
+			if menuItems != None:
+				directoryWindow.updateMenuItems(menuItems)
 			directoryWindow.updateContentItems(windowInformation)
 				
 		finally:
 			mc.HideDialogWait()
 		
-	def handleItem(self, clickedItem, fromWindowId = 0):
-		"""
-		Determines the appropriate action for a plex item (a url)
-		"""	
-		itemType = clickedItem.GetProperty("itemtype")
-		type = clickedItem.GetProperty("type")
-		util.logDebug("Handling item ItemType: %s, Type: %s, ViewGroup: %s, Path: %s" % (itemType, type, clickedItem.GetProperty("viewgroup"), clickedItem.GetPath()))
-
-		if itemType == "Video":
-			#Clicked on a video
-			self._handleVideoItem(clickedItem, fromWindowId)
-		
-		elif itemType == "Track":
-			#Clicked on a music track
-			self._handleTrackItem(clickedItem)
-		
-		elif itemType == "Directory" or itemType == "Artist" or itemType == "Album":
-			#Clicked on a collection of items
-			self._handleCollectionItem(clickedItem, fromWindowId)
-			
-		elif itemType == "Photo":
-			#Clicked on a photo
-			self._handlePhotoItem(clickedItem)
-			
-		elif itemType == "QueueItem":
-			#Clicked on a queue item
-			self._handlePlexQueueItem(clickedItem)
-
-		# Unknown item
-		else:
-			mc.ShowDialogNotification("Unknown itemType: %s" % itemType)
-
 	def playVideo(self, server, playItem, mediaIndex, subtitleIndex, audioIndex):
 		#util.logDebug("Playing item "+playItem.GetProperty("title"))
+		
+		if subtitleIndex != 0 and audioIndex != 0:
+			#Transcoding will occurred
+			selection = mc.ShowDialogConfirm("Transcoding required", "Selecting subtitles and a different audio track requires transcoding. This may take a while depending on the media and Plex server. "+os.linesep+os.linesep+"Do you wish to continue?", "No", "Yes")
+			if not selection:
+				mc.HideDialogWait()
+				return False
+		
 		#Check for resume
 		viewOffset = playItem.GetProperty("viewOffset")
 		if viewOffset == "" or int(viewOffset) == 0:
@@ -1730,6 +2663,7 @@ class Plexee(object):
 			elif selection == 0: #resume
 				pass
 			else: #cancelled dialog
+				mc.HideDialogWait()
 				return False
 		
 		#Play item
@@ -1752,13 +2686,23 @@ class Plexee(object):
 		if not self.config.isAutoConnectOn() and not self.config.isManualConnectOn() and not self.config.isMyPlexConnectOn():
 			self.loadContent()
 		else:
-			mc.ActivateWindow(Plexee.DIALOG_CONNECT_ID)
-			
+			connectDialog = self.getConnectionDialog()
+			connectDialog.activate()
+
+##
+#Represents the content of a PlexeeDirectoryWindow
+#The title item and associated content items
+#			
 class WindowInformation(object):
-	def __init__(self, titleListItems, childListItems):
-		self.titleListItems = titleListItems
+	def __init__(self, titleListItem, childListItems, dataHash):
+		self.titleListItem = titleListItem
 		self.childListItems = childListItems
-		
+		self.dataHash = dataHash
+
+##
+#Represents media options available for a video
+#i.e. available video resolutions, audio streams, subtitles
+#	
 class MediaOptions(object):
 	def __init__(self, mediaItems, subtitleItems, audioItems):
 		self.mediaItems = mediaItems

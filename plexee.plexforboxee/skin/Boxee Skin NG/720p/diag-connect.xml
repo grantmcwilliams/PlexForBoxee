@@ -19,7 +19,7 @@ connectDialog.load()
 			<width>1280</width>
 			<height>720</height>
 			<colordiffuse>CC000000</colordiffuse>
-			<texture>com.xmcnuggetx.plexee/shapes/square.png</texture>
+			<texture>shapes/square.png</texture>
 		</control>
 		
 		<control type="group">
@@ -33,14 +33,14 @@ connectDialog.load()
 				<width>600</width>
 				<height>550</height>
 				<colordiffuse>FF0E1418</colordiffuse>
-				<texture border="10">com.xmcnuggetx.plexee/shapes/rounded.png</texture>
+				<texture border="10">shapes/rounded.png</texture>
 			</control>
 			
 			<!-- setting window outline -->
 			<control type="image">
 				<width>600</width>
 				<height>550</height>
-				<texture border="10">com.xmcnuggetx.plexee/shapes/rounded_outline.png</texture>
+				<texture border="10">shapes/rounded_outline.png</texture>
 			</control>
 			
 			
@@ -51,7 +51,7 @@ connectDialog.load()
 				<width>580</width>
 				<height>3</height>
 				<colordiffuse>33FFFFFF</colordiffuse>
-				<texture>com.xmcnuggetx.plexee/shapes/square.png</texture>
+				<texture>shapes/square.png</texture>
 			</control>
 			
 			<control type="label">
@@ -118,8 +118,8 @@ connectDialog.load()
 						<onup>-</onup>
 						<ondown>-</ondown>
 						
-						<texturefocus border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texturefocus>
-						<texturenofocus border="10">com.xmcnuggetx.plexee/shapes/rounded_white_20.png</texturenofocus>
+						<texturefocus border="10">shapes/blue_faded.png</texturefocus>
+						<texturenofocus border="10">shapes/rounded_white_20.png</texturenofocus>
 						
 						<textcolor>FFCCCCCC</textcolor>
 						<focusedcolor>FFFFFFFF</focusedcolor>
@@ -141,8 +141,8 @@ connectDialog.load()
 						<onup>-</onup>
 						<ondown>-</ondown>
 						
-						<texturefocus border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texturefocus>
-						<texturenofocus border="10">com.xmcnuggetx.plexee/shapes/rounded_white_20.png</texturenofocus>
+						<texturefocus border="10">shapes/blue_faded.png</texturefocus>
+						<texturenofocus border="10">shapes/rounded_white_20.png</texturenofocus>
 						
 						<textcolor>FFCCCCCC</textcolor>
 						<focusedcolor>FFFFFFFF</focusedcolor>

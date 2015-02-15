@@ -1,6 +1,14 @@
 import mc
 import datetime
+import inspect
+import md5
 
+class Constants(object):
+	IS_DEBUG = -1
+
+def hash(string):
+	return md5.new(string).hexdigest()
+	
 def cleanString(string):
 	return string.encode("utf-8", "replace")
 
@@ -53,15 +61,21 @@ def msToFormattedDuration(ms, humanReadable = True):
 	return duration
 
 def logDebug(msg):
-	_debug = mc.GetApp().GetLocalConfig().GetValue("debug")
+	if Constants.IS_DEBUG == -1:
+		Constants.IS_DEBUG = mc.GetApp().GetLocalConfig().GetValue("debug")
+		
 #	msg = cleanString(msg)
-	if _debug:
+	if Constants.IS_DEBUG:
 		try:
-			print "Plexee: " + msg
+			stack = inspect.stack()
+			the_class = stack[1][0].f_locals["self"].__class__
+			the_method = stack[1][0].f_code.co_name
+			print "Plexee: %s, %s: %s" % (the_class, the_method, msg)
 		except:
 			pass
 	else:
-		mc.LogDebug("Plexee: " + msg)
+		pass
+		#mc.LogDebug("Plexee: " + msg)
 
 def logInfo(msg):
 #	msg = cleanString(msg)
@@ -85,4 +99,15 @@ def getIndex(listItem, list):
 			return result
 	return result
 
+def getProperties(itemlist, property):
+	results = []
+	if type(property) is str:
+		property = [property]
+	
+	for i in itemlist:
+		vals = dict()
+		for p in property:
+			vals[p] = i.GetProperty(p)
+		results.append(vals)	
+	return results
 	

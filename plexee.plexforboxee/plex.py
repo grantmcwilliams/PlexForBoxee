@@ -7,9 +7,11 @@ import urlparse
 import util
 import uuid
 import xbmc
-
 from elementtree import ElementTree
 
+##
+# Manages the interaction with the Plex ecosystem
+#
 class PlexManager(object):
 	"""
 	Manages all communication from Plexee and Plex Services
@@ -33,6 +35,20 @@ class PlexManager(object):
 		try: self.xPlexClientIdentifier = mc.GetDeviceId()
 		except: self.xPlexClientIdentifier = str(uuid.getnode())
 
+	def putPlexCommand(self, url):
+		opener = urllib2.build_opener(urllib2.HTTPHandler)
+		request = urllib2.Request(url)
+		request.get_method = lambda: 'PUT'
+		request.add_header('Content-Type', 'text/html')
+		request.add_header("X-Plex-Platform", self.xPlexPlatform)
+		request.add_header("X-Plex-Platform-Version", self.xPlexPlatformVersion)
+		request.add_header("X-Plex-Provides", self.xPlexProvides)
+		request.add_header("X-Plex-Product", self.xPlexProduct)
+		request.add_header("X-Plex-Version", self.xPlexVersion)
+		request.add_header("X-Plex-Device", self.xPlexDevice)
+		request.add_header("X-Plex-Client-Identifier", self.xPlexClientIdentifier)
+		return opener.open(request) 
+	
 	def buildPlexCommand(self):
 		"""
 		Plex Headers
@@ -117,6 +133,55 @@ class PlexManager(object):
 		if server is None: server = self.sharedServers.get(machineIdentifier, None)
 		return server
 
+	def deletePlaylist(self, server, id):
+		url = server._getUrl(server._getRootUrl(), "/playlists/"+id)
+		http = self.buildPlexCommand()
+		http.Delete(url)
+	
+	def deleteFromPlaylist(self, server, playlistId, itemId):
+		#Delete - DELETE http://10.1.3.200:32400/playlists/35339/items/72
+		url = server._getUrl(server._getRootUrl(), "/playlists/%s/items/%s" % (playlistId, itemId))
+		util.logDebug("Deleting playlist item: "+url)
+		http = self.buildPlexCommand()
+		http.Delete(url)
+
+	def addToPlaylist(self, server, id, key):
+		#PUT http://10.1.3.200:32400/playlists/35339/items?uri=library%3A%2F%2F9dbbfd79-c597-4294-a32d-edf7c2975a41%2Fitem%2F%252Flibrary%252Fmetadata%252F34980
+		key = urllib.quote(key, '')
+		args = dict()
+		args['uri']="library:///item/%s" % key
+		url = server._getUrl(server._getRootUrl(), "/playlists/%s/items" % id, args)
+		util.logDebug("Adding playlist item: "+url)
+		self.putPlexCommand(url)
+	
+	def savePlaylist(self, server, name, attribs):
+		http = self.buildPlexCommand()
+		args = dict()
+		args['title']=name
+		args['type']='audio'
+		args['smart']='0'
+		key = urllib.quote(attribs[0]['key'], '')
+		args['uri']="library:///item/%s" % key
+		url = server._getUrl(server._getRootUrl(), "/playlists", args)
+		util.logDebug("Saving playlist: "+url)
+		#Fudge post attributes (ignore=1) - otherwise a GET is done....
+		data = http.Post(url,'ignore=1')
+		if not data:
+			#todo: handle error
+			return
+		tree = ElementTree.fromstring(data)[0]
+		ratingKey = tree.attrib.get("ratingKey","")
+		util.logDebug("Rating Key: "+data)
+		if ratingKey != "":
+			for a in range(1,len(attribs)):
+				self.addToPlaylist(server, ratingKey, attribs[a]['key'])
+		
+		#Add - GET http://10.1.3.200:32400/playlists/35339/items?uri=library%3A%2F%2F9dbbfd79-c597-4294-a32d-edf7c2975a41%2Fitem%2F%252Flibrary%252Fmetadata%252F34980
+		#DELETE http://10.1.3.200:32400/playlists/35342
+		#GET http://10.1.3.200:32400/playlists?type=audio&title=Shalala+Lala&smart=0&uri=library%3A%2F%2F9dbbfd79-c597-4294-a32d-edf7c2975a41%2Fitem%2F%252Flibrary%252Fmetadata%252F34979
+		#GET http://10.1.3.200:32400/playlists?type=audio&uri=library%3A%2F%2F9a35df949e05bc86d0aa792c56e3db68c0c36250%2Fitem%2Flibrary%2Fmetadata%2F34976&smart=0&title=testy
+		#http://10.1.3.200:32400/playlists?type=audio&uri=library%3A%2F%2F9dbbfd79-c597-4294-a32d-edf7c2975a41%2Fitem%2Flibrary%2Fmetadata%2F34976&smart=0&title=testy
+		
 	def myPlexLogin(self, username, password):
 		self.myplex.login(username, password)
 		if self.myplex.isAuthenticated():
@@ -134,10 +199,10 @@ class PlexManager(object):
 		else:
 			return self.ERR_MYPLEX_NOT_AUTHENTICATED
 
+##
+# Encapsulates the MyPlex online service
+#
 class MyPlexService(object):
-	"""
-	Provides an interface to the MyPlex service
-	"""			
 	BASE_URL = "https://plex.tv"
 	AUTH_URL = BASE_URL + "/users/sign_in.xml"
 	LIBRARY_URL = BASE_URL + "/pms/system/library/sections?auth_token=%s"
@@ -200,6 +265,7 @@ class MyPlexService(object):
 		
 		if self.isAuthenticated():
 			url = MyPlexService.SERVERS_URL % self.authenticationToken
+			util.logDebug("Finding servers via: "+url)
 			data = mc.Http().Get(url)
 			if data:
 				tree = ElementTree.fromstring(data)
@@ -213,9 +279,7 @@ class MyPlexService(object):
 
 					util.logInfo("MyPlex found servers %s:%s" % (host,port))
 					foundServer = True
-					server = PlexServer(host, port, accessToken)
-					if not server.isAuthenticated():
-						continue
+					server = None
 					if local == "1":
 						#Try the local addresses
 						if localAddresses:
@@ -230,20 +294,26 @@ class MyPlexService(object):
 									localMachineIdentifier = tree.attrib.get("machineIdentifier", "")
 									if localMachineIdentifier == machineIdentifier:
 										util.logInfo("--> Using local address %s:32400 instead of remote address" % addr)
-										server.host = addr
-										server.port = "32400"
+										server = PlexServer(addr, "32400", accessToken)
 										resolved = True
 										server.isLocal = True
 										break
-						if not resolved:
-							util.logInfo("--> Using remote address unable to resolve local address" % addr)
+							if not resolved:
+								util.logInfo("--> Using remote address unable to resolve local address" % addr)
+								server = PlexServer(host, port, accessToken)
+
+						if server is None or not server.isAuthenticated():
+							continue
 						localServers[machineIdentifier] = server
 					else:
+						server = PlexServer(host, port, accessToken)
 						remoteServers[machineIdentifier] = server
 		
 		return localServers, remoteServers, foundServer
-		
 
+##
+# Encapsulates a Plex server (local or remote)
+#	
 class PlexServer(object):
 	"""
 	Provides an interface to a Plex server
@@ -257,8 +327,10 @@ class PlexServer(object):
 	STUDIO_URL = "/system/bundle/media/flags/studio/"
 	RATING_URL = "/system/bundle/media/flags/contentRating/"
 	SEARCH_URL = "/search"
+	PLAYLIST_URL = "/playlists"
 	SEARCH_ACTOR_URL = "/search/actor"
 	TRANSCODE_URL = "/video/:/transcode/universal/start"
+	MUSIC_TRANSCODE_URL = "/music/:/transcode/generic.mp3"
 	UNWATCHED_URL = "/:/unscrobble"
 	WATCHED_URL = "/:/scrobble"
 
@@ -301,7 +373,12 @@ class PlexServer(object):
 	def getData(self, url, args = None):
 		url = self.getUrl(url, args)
 		util.logDebug("Retrieving data from: " + url)
-		return mc.Http().Get(url), url
+		http = mc.Http()
+		#TODO: Handle errors
+		data = http.Get(url)
+		if mc.Http().GetHttpResponseCode() == 400:
+			pass
+		return data, url
 	
 	def getUrl(self, url, args = None):
 		return self._getUrl(self._getRootUrl(), url, args)
@@ -364,7 +441,7 @@ class PlexServer(object):
 		url = self.getUrl(PlexServer.WATCHED_URL,args)
 		util.logDebug("Setting media key=[%s] as watched" % mediaKey)
 		mc.Http().Get(url)
-		
+	
 	def setMediaUnwatched(self, mediaKey):
 		"""
 		Set media as unwatched
@@ -376,37 +453,44 @@ class PlexServer(object):
 		util.logDebug("Setting media key=[%s] as unwatched" % mediaKey)
 		mc.Http().Get(url)
 
-	def setAudioStream(self, partId, audioStreamId):
-		import urllib2
-		opener = urllib2.build_opener(urllib2.HTTPHandler)
+	def setAudioStream(self, manager, partId, audioStreamId):
 		args = dict()
 		args['audioStreamID']=audioStreamId
 		url = self.getUrl("/library/parts/"+partId, args)
 		util.logDebug("-->Setting audio stream: "+url)
-		request = urllib2.Request(url)
-		request.add_header('Content-Type', 'text/html')
-		request.get_method = lambda: 'PUT'
-		url = opener.open(request)
+		manager.putPlexCommand(url)
 	
-	def setSubtitleStream(self, partId, subtitleStreamId):
-		import urllib2
-		opener = urllib2.build_opener(urllib2.HTTPHandler)
+	def setSubtitleStream(self, manager, partId, subtitleStreamId):
 		args = dict()
 		args['subtitleStreamID']=subtitleStreamId
 		url = self.getUrl("/library/parts/"+partId, args)
 		util.logDebug("-->Setting subtitle stream: "+url)
-		request = urllib2.Request(url)
-		request.add_header('Content-Type', 'text/html')
-		request.get_method = lambda: 'PUT'
-		url = opener.open(request)
+		manager.putPlexCommand(url)
 
-	def getDirectStreamUrl(self, manager, mediaKey, mediaIndex, partIndex, offset = 0):
+	def getMusicTranscodeToMp3(self, manager, mediaKey):
+		args = dict()
+		args['url']="http://127.0.0.1:"+str(self.port)+"/library/metadata/" + str(mediaKey)
+		args['format']='mp3'
+		args['audioCodec']='libmp3lame'
+		args['audioBitrate']='320'
+		args['audioSamples']='44100'
+		args['X-Plex-Product']=manager.xPlexProduct
+		args['X-Plex-Version']=manager.xPlexVersion
+		args['X-Plex-Client-Identifier']=manager.xPlexClientIdentifier
+		args['X-Plex-Platform']=manager.xPlexPlatform
+		args['X-Plex-Platform-Version']=manager.xPlexPlatformVersion
+		args['X-Plex-Device']=manager.xPlexDevice
+		url = self.getUrl(PlexServer.MUSIC_TRANSCODE_URL, args)
+		util.logDebug("-->Setting music stream: "+url)
+		return url
+		
+	def getVideoDirectStreamUrl(self, manager, mediaKey, mediaIndex, partIndex, offset = 0):
 		args = dict()
 		args['path']="http://127.0.0.1:"+str(self.port)+"/library/metadata/" + str(mediaKey)
 		args['mediaIndex']=str(mediaIndex)
 		args['partIndex']=str(partIndex)
-		args['protocol']="http"
-		#args['protocol']="hls"
+		#args['protocol']="http"
+		args['protocol']="hls"
 		#args['protocol']="dash"
 		args['offset']=str(offset)
 		args['fastSeek']="1"
@@ -428,7 +512,7 @@ class PlexServer(object):
 		util.logDebug("-->Setting direct stream: "+url)
 		return url
 		
-	def getTranscodeUrl(self, manager, quality, mediaKey, mediaIndex, partIndex, offset = 0):
+	def getVideoTranscodeUrl(self, manager, quality, mediaKey, mediaIndex, partIndex, offset = 0):
 		args = dict()
 		args['path']="http://127.0.0.1:"+str(self.port)+"/library/metadata/" + str(mediaKey)
 		args['mediaIndex']=str(mediaIndex)
@@ -520,6 +604,9 @@ class PlexServer(object):
 		"""
 		return self._getUrl("http://%s:%s" % (self.host, self.port), "/")
 
+	def getPlaylistData(self):
+		return self.getData(PlexServer.PLAYLIST_URL)
+	
 	def getChannelData(self):
 		"""
 		Returns the channel url of the server

@@ -9,12 +9,12 @@
 		<control type="image">
 			<width>1280</width>
 			<height>720</height>
-			<texture fallback="com.xmcnuggetx.plexee/defaultbackground.png">$INFO[Container(100).ListItem.Property(image1)]</texture>
+			<texture fallback="defaultbackground.png">$INFO[Container(100).ListItem.Property(image1)]</texture>
 		</control>
 		<control type="image">
 			<width>1280</width>
 			<height>720</height>
-			<texture>com.xmcnuggetx.plexee/shapes/faded.png</texture>
+			<texture>shapes/faded.png</texture>
 		</control>
 		
 		
@@ -26,18 +26,10 @@
 			<height>560</height>
 			
 			<onright>300</onright>
-					<onup lang="python">
-<![CDATA[			
-window = mc.GetWindow(14003)
-if window.GetControl(600).IsVisible():
-	window.GetControl(600).SetFocus()
-else:
-	window.GetControl(50).SetFocus()
-]]>
-					</onup>
+			<onup lang="python">plexee.getAlbumWindow().moveUpFromContent()</onup>
 			
 			<content type="action">
-				<onclick lang="Python">plexee.handleItem(mc.GetFocusedItem(14003, 200), 14003)</onclick>
+				<onclick lang="Python">plexee.getAlbumWindow().menuClicked()</onclick>
 			</content>
 			
 			<itemlayout height="40">
@@ -63,7 +55,7 @@ else:
 					<width>280</width>
 					<height>40</height>
 					<colordiffuse>66FFFFFF</colordiffuse>
-					<texture border="10">com.xmcnuggetx.plexee/shapes/rounded_outline.png</texture>
+					<texture border="10">shapes/rounded_outline.png</texture>
 				</control>
 				
 				<control type="image">
@@ -72,7 +64,7 @@ else:
 					<width>280</width>
 					<height>40</height>
 					<visible>Control.HasFocus(200)</visible>
-					<texture border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texture>
+					<texture border="10">shapes/blue_faded.png</texture>
 				</control>
 				
 				<control type="label">
@@ -110,7 +102,7 @@ else:
 			<width>40</width>
 			<height>15</height>
 			<visible>Container(200).HasPrevious</visible>
-			<texture>com.xmcnuggetx.plexee/secondary_page.png</texture>
+			<texture>secondary_page.png</texture>
 		</control>
 		
 		<control type="image">
@@ -119,7 +111,7 @@ else:
 			<width>40</width>
 			<height>15</height>
 			<visible>Container(200).HasNext</visible>
-			<texture flipy="true">com.xmcnuggetx.plexee/secondary_page.png</texture>
+			<texture flipy="true">secondary_page.png</texture>
 		</control>
 		
 		<!--=========================================================================-->
@@ -136,18 +128,10 @@ else:
 			<pagecontrol>2000</pagecontrol>
 			
 			<onleft>200</onleft>
-					<onup lang="python">
-<![CDATA[			
-window = mc.GetWindow(14003)
-if window.GetControl(600).IsVisible():
-	window.GetControl(600).SetFocus()
-else:
-	window.GetControl(50).SetFocus()
-]]>
-					</onup>
+			<onup lang="python">plexee.getAlbumWindow().moveUpFromContent()</onup>
 			
 			<content type="action">
-				<onclick lang="Python">plexee.handleItem(mc.GetFocusedItem(14003, 300), 14003)</onclick>
+				<onclick lang="Python">plexee.getAlbumWindow().contentClicked()</onclick>
 			</content>
 			
 			<itemlayout width="880" height="60">
@@ -160,6 +144,7 @@ else:
 					<wrapmultiline>true</wrapmultiline>
 					<font>font22</font>
 					<textcolor>66FFFFFF</textcolor>
+					<selectedcolor>66FFFFFF</selectedcolor>
 					
 					<align>left</align>
 					<label>$INFO[ListItem.Property(custom:index)]</label>
@@ -173,6 +158,7 @@ else:
 					<wrapmultiline>true</wrapmultiline>
 					<font>font22</font>
 					<textcolor>66FFFFFF</textcolor>
+					<selectedcolor>66FFFFFF</selectedcolor>
 					
 					<align>left</align>
 					<label>$INFO[ListItem.Property(custom:title)]</label>
@@ -186,6 +172,7 @@ else:
 					<wrapmultiline>true</wrapmultiline>
 					<font>font22</font>
 					<textcolor>66FFFFFF</textcolor>
+					<selectedcolor>66FFFFFF</selectedcolor>
 					
 					<align>left</align>
 					<label>$INFO[ListItem.Property(custom:durationformatted)]</label>
@@ -199,7 +186,7 @@ else:
 					<width>880</width>
 					 <height>45</height>
 					 <visible>Control.HasFocus(300)</visible>
-					 <texture border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texture>
+					 <texture border="10">shapes/blue_faded.png</texture>
 				  </control>
 				  <control type="label">
 					<posx>10</posx>
@@ -250,9 +237,9 @@ else:
 			<width>12</width>
 			<height>580</height>
 			 
-			<texturesliderbackground border="6">com.xmcnuggetx.plexee/scrollbar/background.png</texturesliderbackground>
-			<texturesliderbar border="6">com.xmcnuggetx.plexee/scrollbar/nub.png</texturesliderbar>
-			<texturesliderbarfocus border="6">com.xmcnuggetx.plexee/scrollbar/nub.png</texturesliderbarfocus>
+			<texturesliderbackground border="6">scrollbar/background.png</texturesliderbackground>
+			<texturesliderbar border="6">scrollbar/nub.png</texturesliderbar>
+			<texturesliderbarfocus border="6">scrollbar/nub.png</texturesliderbarfocus>
 			 
 			<orientation>vertical</orientation>
 			<showonepage>true</showonepage>
@@ -316,63 +303,61 @@ else:
 		
 		<!-- TOP MENU ============================================================== -->
 		
-<!-- Music player -->
-		<control type="button" id="600">
-			<posx>430</posx>
-			<posy>15</posy>
-			<width>440</width>
-			<height>60</height>
+		<!-- Music player -->
+		<control type="group" id="599">
+			<defaultcontrol>600</defaultcontrol>
+			<visible>StringCompare(App.String(playingtheme),0) + Player.HasAudio</visible>
+			
+			<control type="button" id="600">
+				<posx>430</posx>
+				<posy>20</posy>
+				<width>440</width>
+				<height>60</height>
 
-			<ondown>300</ondown>
-			<onright>50</onright>
-			<onup>-</onup>
-			<onleft>200</onleft>
+				<ondown>300</ondown>
+				<onright>50</onright>
+				<onup>-</onup>
+				<onleft>200</onleft>
 
-			<visible>!App.String(playingtheme) + Player.HasAudio</visible>
-			<texturenofocus border="10">com.xmcnuggetx.plexee/shapes/faded.png</texturenofocus>
-			<texturefocus border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texturefocus>
-			<onclick lang="python">
-<![CDATA[
-mc.ActivateWindow(12006)
-]]>
-			</onclick>
-		</control>			
-		<control type="image">
-			<posx>440</posx>
-			<posy>20</posy>
-			<width>40</width>
-			<height>50</height>
-			<visible>!App.String(playingtheme) + Player.HasAudio</visible>
-			<aspectratio>stretch</aspectratio>
-			<texture>com.xmcnuggetx.plexee/default_icons/case_artist.png</texture>
-		</control>
-		<control type="label">
-			<posx>490</posx>
-			<posy>35</posy>
-			<width>100</width>
-			<visible>!App.String(playingtheme) + Player.HasAudio + Player.Playing</visible>
-		   <font>Font_NowPlayingTrack</font>
-		   <label>Now Playing:</label>
-		   <textcolor>grey</textcolor>
-		</control>
-		<control type="label">
-			<posx>490</posx>
-			<posy>35</posy>
-			<width>100</width>
-			<visible>!App.String(playingtheme) + Player.HasAudio + Player.Paused</visible>
-		   <font>Font_NowPlayingTrack</font>
-		   <label> - Paused - </label>
-		   <textcolor>grey</textcolor>
-		</control>
-		<control type="fadelabel">
-			<posx>600</posx>
-			<posy>35</posy>
-			<width>260</width>
-			<visible>!App.String(playingtheme) + Player.HasAudio</visible>
-		   <font>Font_NowPlayingTrack</font>
-		   <scroll>true</scroll>
-		   <label>$INFO[MusicPlayer.Artist] - $INFO[MusicPlayer.Album] - $INFO[MusicPlayer.Title]</label>
-		   <textcolor>white</textcolor>
+				<texturenofocus border="10">shapes/faded.png</texturenofocus>
+				<texturefocus border="10">shapes/blue_faded.png</texturefocus>
+				<onclick lang="python">mc.ActivateWindow(12006)</onclick>
+			</control>			
+			<control type="image">
+				<posx>440</posx>
+				<posy>25</posy>
+				<width>40</width>
+				<height>50</height>
+				<aspectratio>stretch</aspectratio>
+				<texture>default_icons/case_artist.png</texture>
+			</control>
+			<control type="label">
+				<posx>490</posx>
+				<posy>40</posy>
+				<width>100</width>
+			<visible>Player.HasAudio + Player.Playing</visible>
+			   <font>Font_NowPlayingTrack</font>
+			   <label>Now Playing:</label>
+			   <textcolor>grey</textcolor>
+			</control>
+			<control type="label">
+				<posx>490</posx>
+				<posy>40</posy>
+				<width>100</width>
+			<visible>Player.HasAudio + Player.Paused</visible>
+			   <font>Font_NowPlayingTrack</font>
+			   <label> - Paused - </label>
+			   <textcolor>grey</textcolor>
+			</control>
+			<control type="fadelabel">
+				<posx>600</posx>
+				<posy>40</posy>
+				<width>260</width>
+			   <font>Font_NowPlayingTrack</font>
+			   <scroll>true</scroll>
+			   <label>$INFO[MusicPlayer.Artist] - $INFO[MusicPlayer.Album] - $INFO[MusicPlayer.Title]</label>
+			   <textcolor>white</textcolor>
+			</control>
 		</control>
 		<!-- END: Music Player -->
 		
@@ -385,8 +370,8 @@ mc.ActivateWindow(12006)
 			<ondown>300</ondown>
 			<onleft>600</onleft>
 			
-			<texturenofocus>com.xmcnuggetx.plexee/buttons/home.png</texturenofocus>
-			<texturefocus>com.xmcnuggetx.plexee/buttons/home_focus.png</texturefocus>
+			<texturenofocus>buttons/home.png</texturenofocus>
+			<texturefocus>buttons/home_focus.png</texturefocus>
 			
 			<onclick lang="python">mc.ActivateWindow(14000)</onclick>
 		</control>

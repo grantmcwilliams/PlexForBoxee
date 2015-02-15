@@ -39,13 +39,13 @@ playDialog.load()
 		<control type="image">
 			<width>1280</width>
 			<height>720</height>
-			<texture fallback="com.xmcnuggetx.plexee/defaultbackground.png">$INFO[Container(100).ListItem.Property(image1)]</texture>
+			<texture fallback="defaultbackground.png">$INFO[Container(100).ListItem.Property(image1)]</texture>
 		</control>
 		
 		<control type="image">
 			<width>1280</width>
 			<height>720</height>
-			<texture>com.xmcnuggetx.plexee/shapes/faded.png</texture>
+			<texture>shapes/faded.png</texture>
 		</control>
 		
 		<!-- Thumb and media tags (720p etc) ============================================-->
@@ -60,7 +60,7 @@ playDialog.load()
 				<width>280</width>
 				<height>300</height>
 				<aspectratio>keep</aspectratio>
-				<texture fallback="com.xmcnuggetx.plexee/default_icons/case.png">$INFO[Container(100).ListItem.Property(image0)]</texture>
+				<texture fallback="default_icons/case.png">$INFO[Container(100).ListItem.Property(image0)]</texture>
 			</control>
 			
 			<control type="label">
@@ -119,7 +119,7 @@ playDialog.load()
 				<width>129</width>
 				<height>20</height>
 				<aspectratio>keep</aspectratio>
-				<texture>com.xmcnuggetx.plexee/meta/info_window_icon_rating_star_$INFO[Container(100).ListItem.Property(custom:roundedrating)].png</texture>
+				<texture>meta/info_window_icon_rating_star_$INFO[Container(100).ListItem.Property(custom:roundedrating)].png</texture>
 			</control>
 
 		</control>
@@ -256,8 +256,8 @@ playDialog.load()
 				<posx>10</posx>
 				<width>64</width>
 				<height>64</height>
-				<texturefocus>com.xmcnuggetx.plexee/buttons/play_focus.png</texturefocus>
-				<texturenofocus>com.xmcnuggetx.plexee/buttons/play.png</texturenofocus>
+				<texturefocus>buttons/play_focus.png</texturefocus>
+				<texturenofocus>buttons/play.png</texturenofocus>
 				<onright lang="python">
 <![CDATA[
 if playDialog.mediaList.IsEnabled():
@@ -328,13 +328,13 @@ elif playDialog.audioList.IsVisible():
 					 <width>400</width>
 					 <height>60</height>
 					 <visible>Control.HasFocus(340)</visible>
-					 <texture border="10">com.xmcnuggetx.plexee/shapes/grey_faded.png</texture>
+					 <texture border="10">shapes/grey_faded.png</texture>
 				  </control>
 				  <control type="image">
 					 <width>400</width>
 					 <height>60</height>
 					 <visible>Control.HasFocus(340) + IntegerGreaterThan(Container(340).NumItems,1)</visible>
-					 <texture border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texture>
+					 <texture border="10">shapes/blue_faded.png</texture>
 				  </control>
 				<control type="label">
 					<posy>15</posy>
@@ -409,7 +409,7 @@ else:
 					 <width>400</width>
 					 <height>60</height>
 					 <visible>Control.HasFocus(310)</visible>
-					 <texture border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texture>
+					 <texture border="10">shapes/blue_faded.png</texture>
 				  </control>
 				<control type="label">
 					<posy>15</posy>
@@ -483,7 +483,7 @@ else:
 					 <width>370</width>
 					 <height>60</height>
 					 <visible>Control.HasFocus(330)</visible>
-					 <texture border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texture>
+					 <texture border="10">shapes/blue_faded.png</texture>
 				  </control>
 				<control type="label">
 					<posy>15</posy>

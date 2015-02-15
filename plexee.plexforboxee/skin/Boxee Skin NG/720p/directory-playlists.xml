@@ -1,0 +1,483 @@
+<?xml version="1.0"?>
+<window type="window" id="14004">
+	<defaultcontrol>200</defaultcontrol>
+	<allowoverlay>no</allowoverlay>
+	
+	<controls>		
+		<!-- BACKGROUND =============================================================-->
+		<!-- display art -->
+		<control type="image">
+			<width>1280</width>
+			<height>720</height>
+			<texture fallback="defaultbackground.png">$INFO[Container(100).ListItem.Property(image0)]</texture>
+		</control>
+		<control type="image">
+			<width>1280</width>
+			<height>720</height>
+			<texture>shapes/faded.png</texture>
+		</control>
+		
+		<!-- LEFT-HAND MENU ==============================================================-->
+		<control type="list" id="200">
+			<posx>40</posx>
+			<posy>200</posy>
+			<width>280</width>
+			<height>490</height>
+			
+			<onright>300</onright>
+			<onup>800</onup>
+			
+			<content type="action">
+				<onclick lang="Python">plexee.getPlaylistWindow().menuClicked()</onclick>
+			</content>
+			
+			<itemlayout height="40">
+				<control type="label">
+					<posy>0</posy>
+					<posx>10</posx>
+					<height>35</height>
+					<width>280</width>
+					
+					<font>font22</font>
+					<textcolor>66FFFFFF</textcolor>
+					
+					<aligny>center</aligny>
+					<label>$INFO[ListItem.Property(custom:title)]</label>
+				</control>
+				
+			</itemlayout>
+			
+			<focusedlayout height="40">
+				<control type="image">
+					<posx>0</posx>
+					<posy>0</posy>
+					<width>280</width>
+					<height>40</height>
+					<colordiffuse>66FFFFFF</colordiffuse>
+					<texture border="10">shapes/rounded_outline.png</texture>
+				</control>
+				
+				<control type="image">
+					<posx>0</posx>
+					<posy>0</posy>
+					<width>280</width>
+					<height>40</height>
+					<visible>Control.HasFocus(200)</visible>
+					<texture border="10">shapes/blue_faded.png</texture>
+				</control>
+				
+				<control type="label">
+					<posy>0</posy>
+					<posx>10</posx>
+					<height>35</height>
+					<width>280</width>
+					
+					<font>font22</font>
+					<textcolor>66FFFFFF</textcolor>
+					
+					<aligny>center</aligny>
+					<label>$INFO[ListItem.Property(custom:title)]</label>
+				</control>
+				
+				<control type="label">
+					<posy>0</posy>
+					<posx>10</posx>
+					<height>35</height>
+					<width>280</width>
+					
+					<font>font22</font>
+					<textcolor>FFFFFFFF</textcolor>
+					
+					<aligny>center</aligny>
+					<visible>Control.HasFocus(200)</visible>
+					<label>$INFO[ListItem.Property(custom:title)]</label>
+				</control>
+			</focusedlayout>
+		</control>
+		
+		<control type="image">
+			<posx>140</posx>
+			<posy>110</posy>
+			<width>40</width>
+			<height>15</height>
+			<visible>Container(200).HasPrevious</visible>
+			<texture>secondary_page.png</texture>
+		</control>
+		
+		<control type="image">
+			<posx>140</posx>
+			<posy>690</posy>
+			<width>40</width>
+			<height>15</height>
+			<visible>Container(200).HasNext</visible>
+			<texture flipy="true">secondary_page.png</texture>
+		</control>
+		
+		<control type="grouplist" id="800">
+			<defaultcontrol>801</defaultcontrol>
+			<itemgap>2</itemgap>
+			<orientation>horizontal</orientation>
+			<usecontrolcoords>false</usecontrolcoords>
+			<onup>50</onup>
+			<ondown>300</ondown>
+			<posx>350</posx>
+			<posy>100</posy>
+			<width>420</width>
+			<height>64</height>
+			
+			<control type="button" id="806">
+				<width>64</width>
+				<height>64</height>
+				<texturenofocus border="10">buttons/stop.png</texturenofocus>
+				<texturefocus border="10">buttons/stop_focus.png</texturefocus>
+				<onclick lang="python">plexee.getPlaylistWindow().stop()</onclick>
+			</control>			
+			<control type="togglebutton" id="801">
+				<width>64</width>
+				<height>64</height>
+				<usealttexture>!Player.Playing</usealttexture>
+				<texturenofocus border="10">buttons/pause.png</texturenofocus>
+				<texturefocus border="10">buttons/pause_focus.png</texturefocus>
+				<alttexturefocus>buttons/play_focus.png</alttexturefocus>
+				<alttexturenofocus>buttons/play.png</alttexturenofocus>
+				<onclick lang="python">plexee.getPlaylistWindow().pause()</onclick>
+			</control>			
+			<control type="button" id="802">
+				<width>64</width>
+				<height>64</height>
+				<texturenofocus border="10">buttons/shuffle.png</texturenofocus>
+				<texturefocus border="10">buttons/shuffle_focus.png</texturefocus>
+				<onclick lang="python">plexee.getPlaylistWindow().shuffleList()</onclick>
+			</control>			
+			<control type="togglebutton" id="805">
+				<width>64</width>
+				<height>64</height>
+				<usealttexture>!Playlist.IsRepeat</usealttexture>
+				<texturenofocus border="10">buttons/repeat_off.png</texturenofocus>
+				<texturefocus border="10">buttons/repeat_off_focus.png</texturefocus>
+				<alttexturenofocus border="10">buttons/repeat_on.png</alttexturenofocus>
+				<alttexturefocus border="10">buttons/repeat_on_focus.png</alttexturefocus>
+				<onclick lang="python">plexee.getPlaylistWindow().repeatList()</onclick>
+			</control>			
+			<control type="button" id="803">
+				<width>64</width>
+				<height>64</height>
+				<texturenofocus border="10">buttons/save.png</texturenofocus>
+				<texturefocus border="10">buttons/save_focus.png</texturefocus>
+				<onclick lang="python">plexee.getPlaylistWindow().saveList()</onclick>
+			</control>			
+			<control type="button" id="804">
+				<width>64</width>
+				<height>64</height>
+				<texturenofocus border="10">buttons/delete.png</texturenofocus>
+				<texturefocus border="10">buttons/delete_focus.png</texturefocus>
+				<onclick lang="python">plexee.getPlaylistWindow().deleteList()</onclick>
+			</control>			
+		</control>
+		
+		<!--=========================================================================-->
+		<!-- THUMB LIST =============================================================-->
+		<!--=========================================================================-->
+		
+		<control type="group" id="700">
+			<posy>130</posy>
+			<posx>1000</posx>
+			<width>280</width>
+			<height>510</height>
+			<onup>800</onup>
+			
+			<defaultcontrol>701</defaultcontrol>
+			<itemgap>2</itemgap>
+			<orientation>horizontal</orientation>
+			<usecontrolcoords>false</usecontrolcoords>
+			
+			<control type="image">
+				<width>180</width>
+				<height>182</height>
+				<aspectratio>scale</aspectratio>
+				<texture fallback="default_icons/case.png">$INFO[Container(300).ListItem.Property(image0)]</texture>
+			</control>
+			<control type="label">
+				<posy>190</posy>
+				<width>180</width>
+				<height>40</height>
+				<align>center</align>
+				<aligny>center</aligny>
+				<label>$INFO[Container(300).ListItem.Property(custom:title)]</label>
+				<font>font14</font>
+				<textcolor>FF999999</textcolor>
+			</control>
+			<control type="button" id="701">
+				<posy>230</posy>
+				<onleft>300</onleft>
+				<width>180</width>
+				<height>32</height>
+				<font>font14</font>
+				<align>center</align>
+				<aligny>center</aligny>
+				<label>Remove</label>
+				<texturefocus border="10">shapes/blue_faded.png</texturefocus>
+				<texturenofocus border="10">shapes/rounded_white_20.png</texturenofocus>
+				<textcolor>FFCCCCCC</textcolor>
+				<focusedcolor>FFFFFFFF</focusedcolor>
+				<onclick lang="Python">plexee.getPlaylistWindow().deleteClicked()</onclick>
+			</control>
+			
+		</control>
+
+		<control type="list" id="300">
+			<posy>200</posy>
+			<posx>350</posx>
+			<width>610</width>
+			<height>510</height>
+			
+			<preloaditems>1</preloaditems>
+			<pagecontrol>2000</pagecontrol>
+			
+			<onleft>200</onleft>
+			<onright>700</onright>
+			<onup>800</onup>
+			
+			<content type="action">
+				<onclick lang="Python">plexee.getPlaylistWindow().contentClicked()</onclick>
+			</content>
+			
+			<itemlayout width="600" height="60">
+				<control type="label">
+					<posx>10</posx>
+					<posy>5</posy>
+					<width>50</width>
+					<height>60</height>
+					
+					<wrapmultiline>true</wrapmultiline>
+					<font>font22</font>
+					<textcolor>66FFFFFF</textcolor>
+					<selectedcolor>green</selectedcolor>
+					
+					<align>left</align>
+					<label>$INFO[ListItem.Property(custom:index)]</label>
+				</control>
+				<control type="label">
+					<posx>70</posx>
+					<posy>5</posy>
+					<width>420</width>
+					<height>60</height>
+					
+					<wrapmultiline>true</wrapmultiline>
+					<font>font22</font>
+					<textcolor>66FFFFFF</textcolor>
+					<selectedcolor>green</selectedcolor>
+					
+					<align>left</align>
+					<label>$INFO[ListItem.Property(custom:title)]</label>
+				</control>
+				<control type="label">
+					<posx>500</posx>
+					<posy>5</posy>
+					<width>100</width>
+					<height>60</height>
+					
+					<wrapmultiline>true</wrapmultiline>
+					<font>font22</font>
+					<textcolor>66FFFFFF</textcolor>
+					<selectedcolor>green</selectedcolor>
+					
+					<align>left</align>
+					<label>$INFO[ListItem.Property(custom:durationformatted)]</label>
+				</control>
+			</itemlayout>
+			
+			<focusedlayout width="600" height="60">
+				  <control type="image">
+					<posx>0</posx>
+					<posy>0</posy>
+					<width>600</width>
+					 <height>45</height>
+					 <visible>Control.HasFocus(300)</visible>
+					 <texture border="10">shapes/blue_faded.png</texture>
+				  </control>
+				  <control type="label">
+					<posx>10</posx>
+					<posy>5</posy>
+					<width>50</width>
+					<height>60</height>
+					<wrapmultiline>true</wrapmultiline>
+					<font>font22</font>
+					<textcolor>FFFFFFFF</textcolor>
+					<align>left</align>
+					<label>$INFO[ListItem.Property(custom:index)]</label>
+				</control>
+				<control type="label">
+					<posx>70</posx>
+					<posy>5</posy>
+					<width>420</width>
+					<height>60</height>
+					<wrapmultiline>true</wrapmultiline>
+					<font>font22</font>
+					<textcolor>FFFFFFFF</textcolor>
+					<align>left</align>
+					<label>$INFO[ListItem.Property(custom:title)]</label>
+				</control>
+				<control type="label">
+					<posx>500</posx>
+					<posy>5</posy>
+					<width>100</width>
+					<height>60</height>
+					
+					<wrapmultiline>true</wrapmultiline>
+					<font>font22</font>
+					<textcolor>FFFFFFFF</textcolor>
+					
+					<align>left</align>
+					<label>$INFO[ListItem.Property(custom:durationformatted)]</label>
+				</control>
+			</focusedlayout>
+		</control>
+		
+		<!-- SCROLLBAR ==============================================================-->
+		<control type="scrollbar" id="2000">
+			<posx>1248</posx>
+			<posy>120</posy>
+			<width>12</width>
+			<height>580</height>
+			 
+			<texturesliderbackground border="6">scrollbar/background.png</texturesliderbackground>
+			<texturesliderbar border="6">scrollbar/nub.png</texturesliderbar>
+			<texturesliderbarfocus border="6">scrollbar/nub.png</texturesliderbarfocus>
+			 
+			<orientation>vertical</orientation>
+			<showonepage>true</showonepage>
+		</control>
+		
+		<!-- TITLE ==================================================================-->
+		<control type="list" id="100">
+			<posy>10</posy>
+			<posx>30</posx>
+			<width>1150</width>
+			<height>300</height>
+			
+			<orientation>vertical</orientation>
+			<hitrect x="0" y="0" w="0" h="0" />
+			
+			<itemlayout height="100">
+				<control type="image">
+					<width>1</width>
+					<height>1</height>
+				</control>
+			</itemlayout>
+			
+			<focusedlayout>
+				<control type="label">
+					<height>80</height>
+					<width>1150</width>
+					
+					<font>font38</font>
+					<textcolor>FFFFFFFF</textcolor>
+					
+					<label>[B]$INFO[ListItem.Property(custom:title1)][/B]</label>
+				</control>
+				
+				<control type="label">
+					<posy>45</posy>
+					<height>40</height>
+					<width>800</width>
+					
+					<font>font24</font>
+					<textcolor>FF2BB6EA</textcolor>
+					
+					<label>[B]$INFO[ListItem.Property(custom:title2)][/B]</label>
+				</control>
+				
+				<control type="label">
+					<posy>45</posy>
+					<posx>1075</posx>
+					<height>50</height>
+					<width>200</width>
+					
+					<font>font24</font>
+					<textcolor>FF2BB6EA</textcolor>
+					<align>right</align>
+					
+					<label>$INFO[ListItem.Property(custom:size),[COLOR FFFFFFFF]Items: [/COLOR],]</label>
+				</control>
+				
+			</focusedlayout>
+		</control>
+
+		
+		<!-- TOP MENU ============================================================== -->
+		
+		<!-- Music player -->
+		<control type="group" id="599">
+			<defaultcontrol>600</defaultcontrol>
+			<visible>StringCompare(App.String(playingtheme),0) + Player.HasAudio</visible>
+			
+			<control type="button" id="600">
+				<posx>430</posx>
+				<posy>20</posy>
+				<width>440</width>
+				<height>60</height>
+
+				<ondown>300</ondown>
+				<onright>50</onright>
+				<onup>-</onup>
+				<onleft>200</onleft>
+
+				<texturenofocus border="10">shapes/faded.png</texturenofocus>
+				<texturefocus border="10">shapes/blue_faded.png</texturefocus>
+				<onclick lang="python">mc.ActivateWindow(12006)</onclick>
+			</control>			
+			<control type="image">
+				<posx>440</posx>
+				<posy>25</posy>
+				<width>40</width>
+				<height>50</height>
+				<aspectratio>stretch</aspectratio>
+				<texture>default_icons/case_artist.png</texture>
+			</control>
+			<control type="label">
+				<posx>490</posx>
+				<posy>40</posy>
+				<width>100</width>
+			<visible>Player.HasAudio + Player.Playing</visible>
+			   <font>Font_NowPlayingTrack</font>
+			   <label>Now Playing:</label>
+			   <textcolor>grey</textcolor>
+			</control>
+			<control type="label">
+				<posx>490</posx>
+				<posy>40</posy>
+				<width>100</width>
+			<visible>Player.HasAudio + Player.Paused</visible>
+			   <font>Font_NowPlayingTrack</font>
+			   <label> - Paused - </label>
+			   <textcolor>grey</textcolor>
+			</control>
+			<control type="fadelabel">
+				<posx>600</posx>
+				<posy>40</posy>
+				<width>260</width>
+			   <font>Font_NowPlayingTrack</font>
+			   <scroll>true</scroll>
+			   <label>$INFO[MusicPlayer.Artist] - $INFO[MusicPlayer.Album] - $INFO[MusicPlayer.Title]</label>
+			   <textcolor>white</textcolor>
+			</control>
+		</control>
+		<!-- END: Music Player -->
+		
+		<control type="button" id="50">
+			<posx>1122</posx>
+			<posy>18</posy>
+			<width>64</width>
+			<height>64</height>
+			
+			<ondown>800</ondown>
+			<onleft>600</onleft>
+			
+			<texturenofocus>buttons/home.png</texturenofocus>
+			<texturefocus>buttons/home_focus.png</texturefocus>
+			
+			<onclick lang="python">mc.ActivateWindow(14000)</onclick>
+		</control>
+	</controls>
+</window>
