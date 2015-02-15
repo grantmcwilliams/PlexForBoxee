@@ -3,21 +3,20 @@
 	<allowoverlay>no</allowoverlay>
 	<onload lang="python">
 <![CDATA[
-started = config.GetValue("started")
+config = plexee.config
 
-if started == "1":
+if config.hasStarted():
 	selection = mc.ShowDialogConfirm("Exit Plexee?", "Are you sure you wish to exit Plexee?", "No", "Yes")
 	if selection: #exit app
 		if mc:
 			mc.CloseWindow()
 	else:
 		if mc:
-			mc.ActivateWindow(14000)
+			plexee.getHomeWindow().activate()
 else:
-	config.SetValue("started", "1")
-	loadHome()
-	initPlexee()		
-
+	config.setHasStarted(True)
+	plexee.getHomeWindow().activate()
+	plexee.initPlexee()
 		
 ]]>
 	</onload>

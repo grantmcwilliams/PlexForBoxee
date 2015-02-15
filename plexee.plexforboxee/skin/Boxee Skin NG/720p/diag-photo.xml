@@ -65,7 +65,9 @@ def toggleMenu(on):
 		menu.SetFocus()
 
 def showSettings():
-	mc.ActivateWindow(15004)
+	mc.ActivateWindow(plexee.DIALOG_SETTINGS_ID)
+	settingsDialog = plexee.getSettingsDialog()
+	settingsDialog.showPhotoSettings()
 
 def showNextImage(forward=True):
 	li = list.GetItem(list.GetFocusedItem())

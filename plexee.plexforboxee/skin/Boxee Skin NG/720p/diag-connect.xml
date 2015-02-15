@@ -3,6 +3,14 @@
 	<allowoverlay>no</allowoverlay>
 	<zorder>0</zorder>
 	<defaultcontrol>50</defaultcontrol>
+	<onload lang="python">
+<![CDATA[
+connectDialog = plexee.getConnectionDialog()
+connectDialog.load()
+]]>	
+	</onload>
+	<onunload lang="python">connectDialog.unload()</onunload>
+	
 	<controls>
 		<!-- BACKGROUND =============================================================-->
 		
@@ -116,7 +124,7 @@
 						<textcolor>FFCCCCCC</textcolor>
 						<focusedcolor>FFFFFFFF</focusedcolor>
 						
-						<onclick lang="python">showNextError()</onclick>
+						<onclick lang="python">connectDialog.showNextError()</onclick>
 					</control>
 
 					<control type="button" id="402">

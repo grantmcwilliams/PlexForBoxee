@@ -4,42 +4,11 @@
 	<allowoverlay>no</allowoverlay>
 	<onload lang="python">
 <![CDATA[
-window = mc.GetWindow(15001)
-subtitleList = window.GetList(310)
-playButton = window.GetButton(320)
-audioList = window.GetList(330)
-mediaList = window.GetList(340)
-items = mediaList.GetItems()
-if len(items) <= 1:
-	mediaList.SetEnabled(False)
-else:
-	mediaList.SetEnabled(True)
-
-playItem = mc.GetWindow(15001).GetList(100).GetItem(0)
-machineIdentifier = playItem.GetProperty("machineidentifier")
-server = manager.getServer(machineIdentifier)
-
-def checkMediaSwitch():
-	#Switched media option
-	#Grap any subtitles and audio for this media
-	currentMediaIndex = playItem.GetProperty('currentMediaIndex')
-	if currentMediaIndex:
-		currentMediaIndex = int(currentMediaIndex)
-	else:
-		playItem.SetProperty('currentMediaIndex','0')
-		currentMediaIndex = 0
-	
-	if mediaList.GetFocusedItem() != currentMediaIndex:
-		playItem.SetProperty('currentMediaIndex', str(mediaList.GetFocusedItem()))
-		currentMediaIndex = mediaList.GetFocusedItem()
-		
-		util.logDebug("Media switched - reloading subs/audio streams")
-		mediaOptions = server.getMediaOptions(playItem.GetPath(), mediaList.GetFocusedItem())
-		subtitleList.SetItems(mediaOptions.subtitleItems)
-		audioList.SetItems(mediaOptions.audioItems)
-
+playDialog = plexee.getPlayDialog()
+playDialog.load()
 ]]>
 	</onload>
+	<onunload lang="python">playDialog.unload()</onunload>
 	<controls>
 		<!-- LIST ===================================================================-->
 		<control type="list" id="100">
@@ -291,69 +260,17 @@ def checkMediaSwitch():
 				<texturenofocus>com.xmcnuggetx.plexee/buttons/play.png</texturenofocus>
 				<onright lang="python">
 <![CDATA[
-if mediaList.IsEnabled():
-	mediaList.SetFocus()
-else:
-	subtitleList.SetFocus()
+if playDialog.mediaList.IsEnabled():
+	playDialog.mediaList.SetFocus()
+elif playDialog.subtitleList.IsVisible():
+	playDialog.subtitleList.SetFocus()
+elif playDialog.audioList.IsVisible():
+	playDialog.audioList.SetFocus()
 ]]>
 				</onright>
 				<onclick lang="python">
 <![CDATA[
-#Set the play options for media, subtitles and audio
-subtitleIndex = subtitleList.GetFocusedItem()
-if (subtitleIndex):
-	subtitleIndex = int(subtitleList.GetItem(subtitleIndex).GetProperty("id"))
-else:
-	subtitleIndex = 0
-
-audioIndex = audioList.GetFocusedItem()
-if (audioIndex):
-	audioIndex = int(audioList.GetItem(audioIndex).GetProperty("id"))
-else:
-	audioIndex = 0
-
-mediaIndex = mediaList.GetFocusedItem()
-refresh = True
-
-#Check for resume
-viewOffset = playItem.GetProperty("viewOffset")
-if viewOffset == "" or int(viewOffset) == 0:
-	#no offset just play item
-	server.playVideoUrl(playItem.GetPath(), mediaIndex, subtitleIndex, audioIndex)
-else:
-	#determine resume point
-	s = int(int(viewOffset)/1000)
-	m = 0
-	h = 0
-	f = ""
-	if s>=60:
-		m=int(s/60)
-	if m>=60:
-		h=int(m/60)
-		f = str(h) + " hr "
-	s=s-m*60
-	m=m-h*60
-	if m>0:
-		f = f + str(m) + " min "
-	if s>0:
-		f = f + str(s) + " sec "
-
-	#show resume dialog
-	selection = mc.ShowDialogSelect("Resume", ["Resume from "+f, "Start from beginning"])
-	if selection == 0: #resume
-		server.playVideoUrl(playItem.GetPath(),  mediaIndex, subtitleIndex, audioIndex, int(viewOffset))	
-	elif selection == 1: #from beginning
-		server.playVideoUrl(playItem.GetPath(),  mediaIndex, subtitleIndex, audioIndex)
-	else:
-		#nothing more to do
-		refresh = False
-
-#refresh deck on exit
-if refresh:
-	homeWindow = mc.GetWindow(14000)
-	myOnDeck = homeWindow.GetList(510)
-	myOnDeck.SetItems(manager.getMyOnDeck())
-
+playDialog.play()
 ]]>
 				</onclick>
 			</control>
@@ -369,17 +286,17 @@ if refresh:
 			<!--visible>IntegerGreaterThan(Container(340).NumItems,1)</visible-->
 			<onleft lang="python">
 <![CDATA[
-checkMediaSwitch()
-playButton.SetFocus()
+playDialog.checkMediaSwitch()
+playDialog.playButton.SetFocus()
 ]]>
 			</onleft>
 			<onright lang="python">
 <![CDATA[
-checkMediaSwitch()
-if subtitleList.IsVisible():
-	subtitleList.SetFocus()
-elif audioList.IsVisible():
-	audioList.SetFocus()
+playDialog.checkMediaSwitch()
+if playDialog.subtitleList.IsVisible():
+	playDialog.subtitleList.SetFocus()
+elif playDialog.audioList.IsVisible():
+	playDialog.audioList.SetFocus()
 ]]>
 			</onright>
 			
@@ -387,7 +304,7 @@ elif audioList.IsVisible():
 				<control type="label">
 					<posy>15</posy>
 					<posx>5</posx>
-					<width>100</width>
+					<width>90</width>
 					<height>40</height>
 					<font>font22</font>
 					<textcolor>FFEEEEEE</textcolor>
@@ -395,8 +312,8 @@ elif audioList.IsVisible():
 				</control>
 				<control type="label">
 					<posy>10</posy>
-					<posx>105</posx>
-					<width>300</width>
+					<posx>95</posx>
+					<width>310</width>
 					<height>40</height>
 					<font>font22</font>
 					<aligny>center</aligny>
@@ -422,7 +339,7 @@ elif audioList.IsVisible():
 				<control type="label">
 					<posy>15</posy>
 					<posx>5</posx>
-					<width>100</width>
+					<width>90</width>
 					<height>40</height>
 					<font>font22</font>
 					<textcolor>FFEEEEEE</textcolor>
@@ -430,8 +347,8 @@ elif audioList.IsVisible():
 				</control>
 				<control type="label">
 					<posy>10</posy>
-					<posx>105</posx>
-					<width>300</width>
+					<posx>95</posx>
+					<width>310</width>
 					<height>40</height>
 					<font>font22</font>
 					<aligny>center</aligny>
@@ -455,10 +372,10 @@ elif audioList.IsVisible():
 			<onleft>340</onleft>
 			<onleft lang="python">
 <![CDATA[
-if mediaList.IsEnabled():
-	mediaList.SetFocus()
+if playDialog.mediaList.IsEnabled():
+	playDialog.mediaList.SetFocus()
 else:
-	playButton.SetFocus()
+	playDialog.playButton.SetFocus()
 ]]>
 			</onleft>
 			
@@ -527,13 +444,22 @@ else:
 			<focusposition>0</focusposition>
 			<preloaditems>2</preloaditems>
 			<visible>IntegerGreaterThan(Container(330).NumItems,1)</visible>
-			<onleft>310</onleft>
+			<onleft lang="python">
+<![CDATA[
+if playDialog.subtitleList.IsVisible():
+	playDialog.subtitleList.SetFocus()
+elif playDialog.mediaList.IsEnabled():
+	playDialog.mediaList.SetFocus()
+else:
+	playDialog.playButton.SetFocus()
+]]>
+			</onleft>
 
 			<itemlayout width="400" height="40">
 				<control type="label">
 					<posy>15</posy>
 					<posx>5</posx>
-					<width>100</width>
+					<width>90</width>
 					<height>40</height>
 					<font>font22</font>
 					<textcolor>FFEEEEEE</textcolor>
@@ -541,8 +467,8 @@ else:
 				</control>
 				<control type="label">
 					<posy>10</posy>
-					<posx>105</posx>
-					<width>300</width>
+					<posx>95</posx>
+					<width>310</width>
 					<height>40</height>
 					<font>font22</font>
 					<aligny>center</aligny>
@@ -562,7 +488,7 @@ else:
 				<control type="label">
 					<posy>15</posy>
 					<posx>5</posx>
-					<width>100</width>
+					<width>90</width>
 					<height>40</height>
 					<font>font22</font>
 					<textcolor>FFEEEEEE</textcolor>
@@ -570,8 +496,8 @@ else:
 				</control>
 				<control type="label">
 					<posy>10</posy>
-					<posx>105</posx>
-					<width>300</width>
+					<posx>95</posx>
+					<width>310</width>
 					<height>40</height>
 					<font>font22</font>
 					<aligny>center</aligny>
