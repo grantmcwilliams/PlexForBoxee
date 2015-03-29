@@ -1,15 +1,13 @@
 import sys
 import struct
 import time
+import util
 import urllib2, socket
 
-"""
-PlexGDM
-
-Borrowed from PlexAPI.py at:
-https://github.com/iBaa/PlexConnect
-"""
-
+##
+#Implements the Plex G'day Mate service
+#Borrowed from PlexAPI.py at:
+#https://github.com/iBaa/PlexConnect
 class PlexGDM:
 
 	def __init__(self):
@@ -18,20 +16,13 @@ class PlexGDM:
 		self.Port_PlexGDM = 32414
 		self.Msg_PlexGDM = 'M-SEARCH * HTTP/1.0'
 
-	def __printDebug(self, message):
-		print "Plexee: %s" % message
-
-	"""
-	getServers
-	parameters:
-		none
-	result:
-		PMS_list - dict() of Plex Media servers found
-	"""
+	##
+	#	Returns a list of the plex.PlexServer's found
+	#
 	def getServers(self, timeoutsec):
-		self.__printDebug("***")
-		self.__printDebug("Looking up Plex Media Server")
-		self.__printDebug("***")
+		util.logDebug("***")
+		util.logDebug("Looking up Plex Media Server")
+		util.logDebug("***")
 		
 		# setup socket for discovery -> multicast message
 		GDM = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -43,7 +34,7 @@ class PlexGDM:
 		returnData = []
 		try:
 			# Send data to the multicast group
-			self.__printDebug("Sending discovery message: %s" % self.Msg_PlexGDM)
+			util.logDebug("Sending discovery message: %s" % self.Msg_PlexGDM)
 			GDM.sendto(self.Msg_PlexGDM, (self.IP_PlexGDM, self.Port_PlexGDM))
 
 			# Look for responses from all recipients
@@ -89,12 +80,12 @@ class PlexGDM:
 				PMS_list[update['uuid']] = update
 		
 		if PMS_list=={}:
-			self.__printDebug("GDM: No servers discovered")
+			util.logDebug("GDM: No servers discovered")
 		else:
-			self.__printDebug("GDM: Servers discovered: %d" % len(PMS_list))
+			util.logDebug("GDM: Servers discovered: %d" % len(PMS_list))
 			for uuid in PMS_list:
 				msg = "%s %s:%s" % (PMS_list[uuid]['serverName'], PMS_list[uuid]['ip'], PMS_list[uuid]['port'])
-				self.__printDebug(msg)
+				util.logDebug(msg)
 		
 		return PMS_list
 		

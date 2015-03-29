@@ -4,144 +4,12 @@
 	<allowoverlay>no</allowoverlay>
 	<onload lang="python">
 <![CDATA[
-import xbmc
-import threading
-
-window = mc.GetWindow(15003)
-list = window.GetList(100)
-loading = window.GetLabel(101)
-menu = window.GetControl(300)
-btn = window.GetButton(110)
-
-slideshow = window.GetControl(102)
-slideShowZoom = False
-slideShowDelay = 5
-slideOptions = [1,2,3]
-
-def rotate(clockwise=True):
-	#increment from 8 to 5 rotates clockwise
-	li = list.GetItem(list.GetFocusedItem())
-	rotation = li.GetProperty('rotation')
-	if rotation.isdigit():
-		r = int(rotation)
-	else:
-		if clockwise: r=9
-		else: r=0
-	if clockwise:
-		if r<5:
-			r=r+4
-		else:
-			r = r - 1
-		if r<5:
-			r=8
-	else:
-		if r>4:
-			r=r-4
-		else:
-			r = r + 1
-		if r>4:
-			r=1
-	li.SetProperty('rotation',str(r))
-	
-
-def zoom():
-	li = list.GetItem(list.GetFocusedItem())
-	zoom = li.GetProperty('zoom')
-	if zoom == "":
-		z = 1
-	else:
-		z = int(zoom) + 1
-	if z>5:
-		z=0
-	li.SetProperty('zoom',str(z))
-
-def toggleMenu(on):
-	if not on:
-		menu.SetVisible(False)
-		btn.SetFocus()
-	else:
-		stopSlideshow()
-		menu.SetVisible(True)
-		menu.SetFocus()
-
-def showSettings():
-	mc.ActivateWindow(15004)
-
-def showNextImage(forward=True):
-	li = list.GetItem(list.GetFocusedItem())
-	li.SetProperty('rotation','')
-	li.SetProperty('zoom','')
-	listSize = len(list.GetItems())
-	if listSize == 0:
-		return
-	
-	if forward:
-		index = list.GetFocusedItem() + 1
-		if index >= listSize:
-			index = 0
-	else:
-		index = list.GetFocusedItem() - 1
-		if index < 0:
-			index = listSize - 1
-	
-	#loading.SetVisible(False)
-	list.SetFocusedItem(index)
-	#xbmc.sleep(500)
-	#loading.SetVisible(True)
-
-def stopSlideshow():
-	if slideshow.IsVisible():
-		slideshow.SetVisible(False)
-		try:
-			slideThread.join()
-		except: pass
-
-def threadShow():
-	slideShowZoom = config.GetValue("slideshowzoom")
-	if slideShowZoom:
-		slideShowDelay = 5
-	else:
-		val = config.GetValue("slideshowdelay")
-		if val: slideShowDelay = int(val)
-	
-	pos = list.GetFocusedItem()
-	while slideshow.IsVisible():
-		showNextImage()
-		i=0
-		while i<slideShowDelay*1000:
-			if not slideshow.IsVisible():
-				break
-			i = i + 100
-			xbmc.sleep(100)
-			
-	#Slideshow finished
-	for li in list.GetItems():
-		li.SetProperty('slideshow','')
-	list.SetFocusedItem(pos)
-	
-	
-def startSlideshow():
-	#set slideshow options
-	opt = 0
-	for li in list.GetItems():
-		li.SetProperty('slideshow', str(slideOptions[opt]))
-		opt = opt + 1
-		if opt>len(slideOptions)-1:
-			opt = 0
-
-	#show slides until stopped
-	slideshow.SetVisible(True)
-	toggleMenu(on=False)
-	slideThread.start()
-	
-	
-slideThread = threading.Thread(target=threadShow)
-	
+photoDialog = plexee.getPhotoDialog()
 ]]>
 	</onload>
 	<onunload lang="python">
 <![CDATA[
-stopSlideshow()
+photoDialog.stopSlideshow()
 ]]>
 	</onunload>
 	<controls>
@@ -183,27 +51,27 @@ stopSlideshow()
 		    <height>40</height>
 			<ondown lang="python">
 <![CDATA[
-rotate(clockwise=True)
+photoDialog.rotate(clockwise=True)
 ]]>
 			</ondown>
 			<onup lang="python">
 <![CDATA[
-rotate(clockwise=False)
+photoDialog.rotate(clockwise=False)
 ]]>
 			</onup>
 			<onleft lang="python">
 <![CDATA[
-showNextImage(forward=False)
+photoDialog.showNextImage(forward=False)
 ]]>
 			</onleft>
 			<onright lang="python">
 <![CDATA[
-showNextImage()
+photoDialog.showNextImage()
 ]]>
 			</onright>
 			<onclick lang="python">
 <![CDATA[
-toggleMenu(True)
+photoDialog.toggleMenu(True)
 ]]>
 			</onclick>
 		</control>
@@ -213,7 +81,7 @@ toggleMenu(True)
 		<control type="image">
 			<width>1280</width>
 			<height>720</height>
-			<texture>com.xmcnuggetx.plexee/shapes/black.png</texture>
+			<texture>shapes/black.png</texture>
 		</control>
 		
 		<control type="label" id="101">
@@ -322,7 +190,7 @@ toggleMenu(True)
 				<posy>0</posy>
 				<width>1280</width>
 				<height>120</height>
-				<texture>com.xmcnuggetx.plexee/shapes/black.png</texture>
+				<texture>shapes/black.png</texture>
 				<colordiffuse>66FFFFFF</colordiffuse>
 			</control>		
 
@@ -352,17 +220,17 @@ toggleMenu(True)
 				<control type="button" id="310">
 					<width>64</width>
 					<height>64</height>
-					<texturefocus>com.xmcnuggetx.plexee/buttons/prev_focus.png</texturefocus>
-					<texturenofocus>com.xmcnuggetx.plexee/buttons/prev.png</texturenofocus>
+					<texturefocus>buttons/prev_focus.png</texturefocus>
+					<texturenofocus>buttons/prev.png</texturenofocus>
 					<onright>320</onright>
 					<onup lang="python">
 <![CDATA[			
-toggleMenu(False)
+photoDialog.toggleMenu(False)
 ]]>
 					</onup>
 					<onclick lang="python">
 <![CDATA[			
-showNextImage(forward=False)
+photoDialog.showNextImage(forward=False)
 ]]>
 					</onclick>
 				</control>
@@ -370,18 +238,18 @@ showNextImage(forward=False)
 				<control type="button" id="320">
 					<width>64</width>
 					<height>64</height>
-					<texturefocus>com.xmcnuggetx.plexee/buttons/next_focus.png</texturefocus>
-					<texturenofocus>com.xmcnuggetx.plexee/buttons/next.png</texturenofocus>
+					<texturefocus>buttons/next_focus.png</texturefocus>
+					<texturenofocus>buttons/next.png</texturenofocus>
 					<onleft>310</onleft>
 					<onright>330</onright>
 					<onup lang="python">
 <![CDATA[			
-toggleMenu(False)
+photoDialog.toggleMenu(False)
 ]]>
 					</onup>
 					<onclick lang="python">
 <![CDATA[			
-showNextImage()
+photoDialog.showNextImage()
 ]]>
 					</onclick>
 				</control>
@@ -389,18 +257,18 @@ showNextImage()
 				<control type="button" id="330">
 					<width>64</width>
 					<height>64</height>
-					<texturefocus>com.xmcnuggetx.plexee/buttons/zoom_focus.png</texturefocus>
-					<texturenofocus>com.xmcnuggetx.plexee/buttons/zoom.png</texturenofocus>
+					<texturefocus>buttons/zoom_focus.png</texturefocus>
+					<texturenofocus>buttons/zoom.png</texturenofocus>
 					<onleft>320</onleft>
 					<onright>340</onright>
 					<onup lang="python">
 <![CDATA[			
-toggleMenu(False)
+photoDialog.toggleMenu(False)
 ]]>
 					</onup>
 					<onclick lang="python">
 <![CDATA[			
-zoom()
+photoDialog.zoom()
 ]]>
 					</onclick>
 				</control>
@@ -408,18 +276,18 @@ zoom()
 				<control type="button" id="340">
 					<width>64</width>
 					<height>64</height>
-					<texturefocus>com.xmcnuggetx.plexee/buttons/rotate_focus.png</texturefocus>
-					<texturenofocus>com.xmcnuggetx.plexee/buttons/rotate.png</texturenofocus>
+					<texturefocus>buttons/rotate_focus.png</texturefocus>
+					<texturenofocus>buttons/rotate.png</texturenofocus>
 					<onleft>330</onleft>
 					<onright>350</onright>
 					<onup lang="python">
 <![CDATA[			
-toggleMenu(False)
+photoDialog.toggleMenu(False)
 ]]>
 					</onup>
 					<onclick lang="python">
 <![CDATA[			
-rotate(clockwise=True)
+photoDialog.rotate(clockwise=True)
 ]]>
 					</onclick>
 				</control>
@@ -427,18 +295,18 @@ rotate(clockwise=True)
 				<control type="button" id="350">
 					<width>64</width>
 					<height>64</height>
-					<texturefocus>com.xmcnuggetx.plexee/buttons/play_focus.png</texturefocus>
-					<texturenofocus>com.xmcnuggetx.plexee/buttons/play.png</texturenofocus>
+					<texturefocus>buttons/play_focus.png</texturefocus>
+					<texturenofocus>buttons/play.png</texturenofocus>
 					<onleft>340</onleft>
 					<onright>360</onright>
 					<onup lang="python">
 <![CDATA[			
-toggleMenu(False)
+photoDialog.toggleMenu(False)
 ]]>
 					</onup>
 					<onclick lang="python">
 <![CDATA[			
-startSlideshow()
+photoDialog.startSlideshow()
 ]]>
 					</onclick>
 				</control>
@@ -446,17 +314,17 @@ startSlideshow()
 				<control type="button" id="360">
 					<width>64</width>
 					<height>64</height>
-					<texturefocus>com.xmcnuggetx.plexee/buttons/settings_focus.png</texturefocus>
-					<texturenofocus>com.xmcnuggetx.plexee/buttons/settings.png</texturenofocus>
+					<texturefocus>buttons/settings_focus.png</texturefocus>
+					<texturenofocus>buttons/settings.png</texturenofocus>
 					<onleft>350</onleft>
 					<onup lang="python">
 <![CDATA[			
-toggleMenu(False)
+photoDialog.toggleMenu(False)
 ]]>
 					</onup>
 					<onclick lang="python">
 <![CDATA[			
-showSettings()
+photoDialog.showSettings()
 ]]>
 					</onclick>
 				</control>

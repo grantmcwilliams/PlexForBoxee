@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<window type="window" id="14010">
+	<allowoverlay>no</allowoverlay>
+	<onload lang="python">
+<![CDATA[
+config = plexee.config
+
+if config.hasStarted():
+	selection = mc.ShowDialogConfirm("Exit Plexee?", "Are you sure you wish to exit Plexee?", "No", "Yes")
+	if selection: #exit app
+		if mc:
+			mc.CloseWindow()
+	else:
+		if mc:
+			plexee.getHomeWindow().activate()
+else:
+	config.setHasStarted(True)
+	plexee.getHomeWindow().activate()
+	plexee.initPlexee()
+		
+]]>
+	</onload>
+	<controls>
+		<control type="image">
+			<width>1280</width>
+			<height>720</height>
+			<texture>shapes/faded.png</texture>
+		</control>
+	</controls>
+
+</window>

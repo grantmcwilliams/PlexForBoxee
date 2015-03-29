@@ -1,93 +1,14 @@
 <?xml version="1.0"?>
 <window type="dialog" id="15000">
-	<defaultcontrol always="true">100</defaultcontrol>
+	<defaultcontrol always="true">41</defaultcontrol>
 	<allowoverlay>no</allowoverlay>
 	<onload lang="python">
 <![CDATA[
-import xbmc
-
-settingwindow = mc.GetWindow(15000)
-discoverClients = settingwindow.GetToggleButton(100)
-discoverClientTime = settingwindow.GetEdit(101)
-manualClient = settingwindow.GetToggleButton(200)
-manualClientHost = settingwindow.GetEdit(201)
-manualClientPort = settingwindow.GetEdit(202)
-myPlex = settingwindow.GetToggleButton(300)
-myPlexUsername = settingwindow.GetEdit(301)
-myPlexPassword = settingwindow.GetEdit(302)
-
-def close():
-	xbmc.executebuiltin("Dialog.Close(15000)")
-
-#Jinxo: Not used at present
-def toggled(id):
-	if not settingwindow.GetToggleButton(id).IsSelected():
-		return
-	
-	if 100 != id: discoverClients.SetSelected(False)
-	if 300 != id: myPlex.SetSelected(False)
-	if 200 != id: manualClient.SetSelected(False)
-	
-def loadsettings():
-	if config.GetValue("usediscover"): discoverClients.SetSelected(True)
-	discoverClientTime.SetText(config.GetValue("discovertime"))
-	
-	if config.GetValue("usemanual"): manualClient.SetSelected(True)
-	manualClientHost.SetText(config.GetValue("manualhost"))
-
-	#default manual port
-	if not config.GetValue("manualport"): config.SetValue("manualport", "32400")
-	manualClientPort.SetText(config.GetValue("manualport"))
-
-	if config.GetValue("usemyplex"): myPlex.SetSelected(True)
-	myPlexUsername.SetText(config.GetValue("myplexusername"))
-	myPlexPassword.SetText(config.GetValue("myplexpassword"))
-
-def savesettings():
-	#Discover clients
-	discoverTime = discoverClientTime.GetText()
-	if not discoverTime.isdigit() or int(discoverTime) < 1 or int(discoverTime) > 5:
-		mc.ShowDialogOk("Error","The Discovery Time must be a number between 1 and 5");
-		return;
-			
-	if discoverClients.IsSelected():
-		config.SetValue("usediscover", "True")
-	else:
-		config.Reset("usediscover")
-	
-	#Set discovery time
-	config.SetValue("discovertime", discoverClientTime.GetText())
-	
-	# manual clients
-	if manualClient.IsSelected():
-		config.SetValue("usemanual", "True")
-		if not manualClientHost.GetText() or not manualClientPort.GetText():
-			mc.ShowDialogOk("Error","You need to specify a host and port for a manual server");
-			return;
-	else:
-		config.Reset("usemanual")
-	config.SetValue("manualhost", manualClientHost.GetText())
-	config.SetValue("manualport", manualClientPort.GetText())
-	
-	#My plex
-	if myPlex.IsSelected():
-		config.SetValue("usemyplex", "True")
-		if not myPlexUsername.GetText() or not myPlexPassword.GetText():
-			mc.ShowDialogOk("Error", "You need to specify a username and password for MyPlex");
-			return;
-	else:
-		config.Reset("usemyplex")
-	
-	config.SetValue("myplexusername", myPlexUsername.GetText())
-	config.SetValue("myplexpassword", myPlexPassword.GetText())
-	close()
-	
-	#Save Successful
-	initPlexee()
-
-loadsettings();
-
-]]></onload>
+settingsDialog = plexee.getSettingsDialog()
+settingsDialog.load()
+]]>
+	</onload>
+	<onunload lang="python">settingsDialog.unload()</onunload>
 	<controls>
 		<!-- BACKGROUND =============================================================-->
 		
@@ -96,32 +17,31 @@ loadsettings();
 			<width>1280</width>
 			<height>720</height>
 			<colordiffuse>CC000000</colordiffuse>
-			<texture>com.xmcnuggetx.plexee/shapes/square.png</texture>
+			<texture>shapes/square.png</texture>
 		</control>
 		
-		
 		<control type="group">
-			<posx>340</posx>
+			<posx>240</posx>
 			<posy>110</posy>
-			<width>600</width>
+			<width>800</width>
 			<height>600</height>
 			
 			
 			<!-- setting window background -->
 			<control type="image">
-				<width>600</width>
+				<width>800</width>
 				<height>600</height>
 				
 				<colordiffuse>FF0E1418</colordiffuse>
-				<texture border="10">com.xmcnuggetx.plexee/shapes/rounded.png</texture>
+				<texture border="10">shapes/rounded.png</texture>
 			</control>
 			
 			<!-- setting window outline -->
 			<control type="image">
-				<width>600</width>
+				<width>800</width>
 				<height>600</height>
 				
-				<texture border="10">com.xmcnuggetx.plexee/shapes/rounded_outline.png</texture>
+				<texture border="10">shapes/rounded_outline.png</texture>
 			</control>
 			
 			
@@ -129,16 +49,16 @@ loadsettings();
 			<control type="image">
 				<posx>10</posx>
 				<posy>50</posy>
-				<width>580</width>
+				<width>780</width>
 				<height>3</height>
 				
 				<colordiffuse>33FFFFFF</colordiffuse>
-				<texture>com.xmcnuggetx.plexee/shapes/square.png</texture>
+				<texture>shapes/square.png</texture>
 			</control>
 			
 			<control type="label">
 				<posx>10</posx>
-				<width>580</width>
+				<width>780</width>
 				<height>60</height>
 
 				<align>center</align>
@@ -148,200 +68,594 @@ loadsettings();
 				<textcolor>FFFFFFFF</textcolor>
 			</control>
 			
-			<!-- CONTENTS ===============================================================-->
-			<control type="grouplist" id="50">
-				<posx>20</posx>
+			<control type="image">
+				<posx>10</posx>
 				<posy>70</posy>
-				<width>560</width>
+				<width>180</width>
+				<height>42</height>
+				<visible>ControlGroup(40).HasFocus(41)</visible>
+				<colordiffuse>66FFFFFF</colordiffuse>
+				<texture border="10">shapes/rounded_outline.png</texture>
+			</control>				
+			<control type="image">
+				<posx>10</posx>
+				<posy>117</posy>
+				<width>180</width>
+				<height>42</height>
+				<visible>ControlGroup(40).HasFocus(42)</visible>
+				<colordiffuse>66FFFFFF</colordiffuse>
+				<texture border="10">shapes/rounded_outline.png</texture>
+			</control>				
+			<control type="image">
+				<posx>10</posx>
+				<posy>164</posy>
+				<width>180</width>
+				<height>42</height>
+				<visible>ControlGroup(40).HasFocus(43)</visible>
+				<colordiffuse>66FFFFFF</colordiffuse>
+				<texture border="10">shapes/rounded_outline.png</texture>
+			</control>				
+			<control type="image">
+				<posx>10</posx>
+				<posy>209</posy>
+				<width>180</width>
+				<height>42</height>
+				<visible>ControlGroup(40).HasFocus(49)</visible>
+				<colordiffuse>66FFFFFF</colordiffuse>
+				<texture border="10">shapes/rounded_outline.png</texture>
+			</control>				
+			<!-- MENU ===============================================================-->
+			<control type="grouplist" id="40">
+				<posx>0</posx>
+				<posy>70</posy>
+				<width>200</width>
 				<height>500</height>
 				<orientation>vertical</orientation>
 				<usecontrolcoords>true</usecontrolcoords>
 				<itemgap>5</itemgap>
-
+				<onright>50</onright>
 				
-				
-				<!-- Discover Clients -->
-				<control type="togglebutton" id="100">
-					<width>560</width>
+				<control type="button" id="41">
+					<posx>10</posx>
+					<width>180</width>
 					<height>42</height>
-				
-					<label>Auto Discover Servers</label>
-					<font>font24</font>
-					<align>left</align>
-					<textoffsetx>45</textoffsetx>
-					<textcolor>FFFFFFFF</textcolor>
-					<focusedcolor>FFFFFFFF</focusedcolor>
-					
-					<texturenofocus border="40,5,5,5">com.xmcnuggetx.plexee/buttons/toggle_no_focus.png</texturenofocus>
-					<texturefocus border="40,5,5,5">com.xmcnuggetx.plexee/buttons/toggle_focus.png</texturefocus>
-					<alttexturenofocus border="40,5,5,5">com.xmcnuggetx.plexee/buttons/toggle_alt_no_focus.png</alttexturenofocus>
-					<alttexturefocus border="40,5,5,5">com.xmcnuggetx.plexee/buttons/toggle_alt_focus.png</alttexturefocus>
-				</control>
-				
-				<!-- auto discover timeout -->
-				<control type="edit" id="101">
-					<width>560</width>
-					<height>42</height>
-					
-					<label>Discovery time (sec)</label>
-					<font>font24</font>
-					<aligny>center</aligny>
-					
-					<textcolor>FFFFFFFF</textcolor>
-					<focusedcolor>FFFFFFFF</focusedcolor>
-					<disabledcolor>66FFFFFF</disabledcolor>
-					<textoffsetx>45</textoffsetx>
-					
-					<texturefocus border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texturefocus>
-					<texturenofocus>-</texturenofocus>
-				</control>
-				
-				<!-- Manual Server -->
-				<control type="togglebutton" id="200">
-					<width>560</width>
-					<height>42</height>
-					
-					<label>Manual Server</label>
-					<font>font24</font>
-					<align>left</align>
-					<textoffsetx>45</textoffsetx>
-					<textcolor>FFFFFFFF</textcolor>
-					<focusedcolor>FFFFFFFF</focusedcolor>
-					
-					<texturenofocus border="40,5,5,5">com.xmcnuggetx.plexee/buttons/toggle_no_focus.png</texturenofocus>
-					<texturefocus border="40,5,5,5">com.xmcnuggetx.plexee/buttons/toggle_focus.png</texturefocus>
-					<alttexturenofocus border="40,5,5,5">com.xmcnuggetx.plexee/buttons/toggle_alt_no_focus.png</alttexturenofocus>
-					<alttexturefocus border="40,5,5,5">com.xmcnuggetx.plexee/buttons/toggle_alt_focus.png</alttexturefocus>
-				</control>
-				
-				<!-- Manual Server - Host -->
-				<control type="edit" id="201">
-					<width>560</width>
-					<height>42</height>
-					
-					<label>Host IP</label>
-					<font>font24</font>
-					<aligny>center</aligny>
-					
-					<textcolor>FFFFFFFF</textcolor>
-					<focusedcolor>FFFFFFFF</focusedcolor>
-					<disabledcolor>66FFFFFF</disabledcolor>
-					<textoffsetx>45</textoffsetx>
-					
-					<texturefocus border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texturefocus>
-					<texturenofocus>-</texturenofocus>
-				</control>
-				
-				<!-- Manual Server - Port -->
-				<control type="edit" id="202">
-					<width>560</width>
-					<height>42</height>
-					
-					<label>Port</label>
-					<font>font24</font>
-					<aligny>center</aligny>
-					
-					<textcolor>FFFFFFFF</textcolor>
-					<focusedcolor>FFFFFFFF</focusedcolor>
-					<disabledcolor>66FFFFFF</disabledcolor>
-					<textoffsetx>45</textoffsetx>
-					
-					<texturefocus border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texturefocus>
-					<texturenofocus>-</texturenofocus>
-				</control>
-				
-				<!-- MyPlex -->
-				<control type="togglebutton" id="300">
-					<width>560</width>
-					<height>42</height>
-					
-					<label>MyPlex</label>
-					<font>font24</font>
-					<align>left</align>
-					<textoffsetx>45</textoffsetx>
-					<textcolor>FFFFFFFF</textcolor>
-					<focusedcolor>FFFFFFFF</focusedcolor>
-					
-					<texturenofocus border="40,5,5,5">com.xmcnuggetx.plexee/buttons/toggle_no_focus.png</texturenofocus>
-					<texturefocus border="40,5,5,5">com.xmcnuggetx.plexee/buttons/toggle_focus.png</texturefocus>
-					<alttexturenofocus border="40,5,5,5">com.xmcnuggetx.plexee/buttons/toggle_alt_no_focus.png</alttexturenofocus>
-					<alttexturefocus border="40,5,5,5">com.xmcnuggetx.plexee/buttons/toggle_alt_focus.png</alttexturefocus>
-				</control>
-				
-				<!-- MyPlex - Username -->
-				<control type="edit" id="301">
-					<width>560</width>
-					<height>42</height>
-					
-					<label>Username</label>
-					<font>font24</font>
-					<aligny>center</aligny>
-					
-					<textcolor>FFFFFFFF</textcolor>
-					<focusedcolor>FFFFFFFF</focusedcolor>
-					<textoffsetx>45</textoffsetx>
-					
-					<texturefocus border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texturefocus>
-					<texturenofocus>-</texturenofocus>
-				</control>
-				
-				<!-- MyPlex - Password -->
-				<control type="edit" id="302">
-					<width>560</width>
-					<height>42</height>
-					
-					<label>Password</label>
-					<font>font24</font>
-					<aligny>center</aligny>
-					<password>True</password>
-					
-					<textcolor>FFFFFFFF</textcolor>
-					<focusedcolor>FFFFFFFF</focusedcolor>
-					<textoffsetx>45</textoffsetx>
-					
-					<texturefocus border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texturefocus>
-					<texturenofocus border="10">-</texturenofocus>
-				</control>
-				
-				<control type="button" id="402">
-					<posx>460</posx>
-					<width>100</width>
-					<height>42</height>
-					
 					<font>font22</font>
 					<align>center</align>
 					<aligny>center</aligny>
-					<label>Save</label>
-					
-					<texturefocus border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texturefocus>
-					<texturenofocus border="10">com.xmcnuggetx.plexee/shapes/rounded_white_20.png</texturenofocus>
-					
+					<label>Connect</label>
+					<texturefocus border="10">shapes/blue_faded.png</texturefocus>
+					<texturenofocus border="10">shapes/rounded_white_20.png</texturenofocus>
 					<textcolor>FFCCCCCC</textcolor>
 					<focusedcolor>FFFFFFFF</focusedcolor>
-					
-					<onclick lang="python">savesettings()</onclick>
-				</control>
-				
-				<control type="button" id="403">
-					<posx>460</posx>
-					<width>100</width>
+				</control>				
+				<control type="button" id="42">
+					<posx>10</posx>
+					<width>180</width>
 					<height>42</height>
-					
 					<font>font22</font>
 					<align>center</align>
 					<aligny>center</aligny>
-					<label>Cancel</label>
-					
-					<texturefocus border="10">com.xmcnuggetx.plexee/shapes/blue_faded.png</texturefocus>
-					<texturenofocus border="10">com.xmcnuggetx.plexee/shapes/rounded_white_20.png</texturenofocus>
-					
+					<label>Experience</label>
+					<onright>52</onright>
+					<texturefocus border="10">shapes/blue_faded.png</texturefocus>
+					<texturenofocus border="10">shapes/rounded_white_20.png</texturenofocus>
 					<textcolor>FFCCCCCC</textcolor>
 					<focusedcolor>FFFFFFFF</focusedcolor>
-					
-					<onclick lang="python">close()</onclick>
-				</control>
+				</control>				
+				<control type="button" id="43">
+					<posx>10</posx>
+					<width>180</width>
+					<height>42</height>
+					<font>font22</font>
+					<align>center</align>
+					<aligny>center</aligny>
+					<label>Photo</label>
+					<onright>53</onright>
+					<texturefocus border="10">shapes/blue_faded.png</texturefocus>
+					<texturenofocus border="10">shapes/rounded_white_20.png</texturenofocus>
+					<textcolor>FFCCCCCC</textcolor>
+					<focusedcolor>FFFFFFFF</focusedcolor>
+				</control>				
+				<control type="button" id="49">
+					<posx>10</posx>
+					<width>180</width>
+					<height>42</height>
+					<font>font22</font>
+					<align>center</align>
+					<aligny>center</aligny>
+					<label>Advanced</label>
+					<onright>59</onright>
+					<texturefocus border="10">shapes/blue_faded.png</texturefocus>
+					<texturenofocus border="10">shapes/rounded_white_20.png</texturenofocus>
+					<textcolor>FFCCCCCC</textcolor>
+					<focusedcolor>FFFFFFFF</focusedcolor>
+				</control>				
+				
 			</control>
 			
+			<!-- CONTENTS ===============================================================-->
+			<control type="group" id="50">
+				<control type="grouplist" id="51">
+					<posx>220</posx>
+					<posy>70</posy>
+					<width>560</width>
+					<height>500</height>
+					<visible>ControlGroup(40).HasFocus(41)</visible>
+					<orientation>vertical</orientation>
+					<usecontrolcoords>true</usecontrolcoords>
+					<itemgap>5</itemgap>
+					<onleft>40</onleft>
+
+					<!-- Discover Clients -->
+					<control type="togglebutton" id="100">
+						<width>560</width>
+						<height>42</height>
+					
+						<label>Auto Discover Servers</label>
+						<font>font24</font>
+						<align>left</align>
+						<textoffsetx>45</textoffsetx>
+						<textcolor>FFFFFFFF</textcolor>
+						<focusedcolor>FFFFFFFF</focusedcolor>
+						
+						<texturenofocus border="40,5,5,5">buttons/toggle_no_focus.png</texturenofocus>
+						<texturefocus border="40,5,5,5">buttons/toggle_focus.png</texturefocus>
+						<alttexturenofocus border="40,5,5,5">buttons/toggle_alt_no_focus.png</alttexturenofocus>
+						<alttexturefocus border="40,5,5,5">buttons/toggle_alt_focus.png</alttexturefocus>
+					</control>
+					
+					<!-- auto discover timeout -->
+					<control type="edit" id="101">
+						<width>560</width>
+						<height>42</height>
+						
+						<label>Discovery Time (sec)</label>
+						<font>font24</font>
+						<aligny>center</aligny>
+						
+						<textcolor>FFFFFFFF</textcolor>
+						<focusedcolor>FFFFFFFF</focusedcolor>
+						<disabledcolor>66FFFFFF</disabledcolor>
+						<textoffsetx>45</textoffsetx>
+						
+						<texturefocus border="10">shapes/blue_faded.png</texturefocus>
+						<texturenofocus>-</texturenofocus>
+					</control>
+					
+					<!-- Manual Server -->
+					<control type="togglebutton" id="102">
+						<width>560</width>
+						<height>42</height>
+						
+						<label>Manual Server</label>
+						<font>font24</font>
+						<align>left</align>
+						<textoffsetx>45</textoffsetx>
+						<textcolor>FFFFFFFF</textcolor>
+						<focusedcolor>FFFFFFFF</focusedcolor>
+						
+						<texturenofocus border="40,5,5,5">buttons/toggle_no_focus.png</texturenofocus>
+						<texturefocus border="40,5,5,5">buttons/toggle_focus.png</texturefocus>
+						<alttexturenofocus border="40,5,5,5">buttons/toggle_alt_no_focus.png</alttexturenofocus>
+						<alttexturefocus border="40,5,5,5">buttons/toggle_alt_focus.png</alttexturefocus>
+					</control>
+					
+					<!-- Manual Server - Host -->
+					<control type="edit" id="103">
+						<width>560</width>
+						<height>42</height>
+						
+						<label>Host IP</label>
+						<font>font24</font>
+						<aligny>center</aligny>
+						
+						<textcolor>FFFFFFFF</textcolor>
+						<focusedcolor>FFFFFFFF</focusedcolor>
+						<disabledcolor>66FFFFFF</disabledcolor>
+						<textoffsetx>45</textoffsetx>
+						
+						<texturefocus border="10">shapes/blue_faded.png</texturefocus>
+						<texturenofocus>-</texturenofocus>
+					</control>
+					
+					<!-- Manual Server - Port -->
+					<control type="edit" id="104">
+						<width>560</width>
+						<height>42</height>
+						
+						<label>Port</label>
+						<font>font24</font>
+						<aligny>center</aligny>
+						
+						<textcolor>FFFFFFFF</textcolor>
+						<focusedcolor>FFFFFFFF</focusedcolor>
+						<disabledcolor>66FFFFFF</disabledcolor>
+						<textoffsetx>45</textoffsetx>
+						
+						<texturefocus border="10">shapes/blue_faded.png</texturefocus>
+						<texturenofocus>-</texturenofocus>
+					</control>
+					
+					<!-- MyPlex -->
+					<control type="togglebutton" id="105">
+						<width>560</width>
+						<height>42</height>
+						
+						<label>MyPlex</label>
+						<font>font24</font>
+						<align>left</align>
+						<textoffsetx>45</textoffsetx>
+						<textcolor>FFFFFFFF</textcolor>
+						<focusedcolor>FFFFFFFF</focusedcolor>
+						
+						<texturenofocus border="40,5,5,5">buttons/toggle_no_focus.png</texturenofocus>
+						<texturefocus border="40,5,5,5">buttons/toggle_focus.png</texturefocus>
+						<alttexturenofocus border="40,5,5,5">buttons/toggle_alt_no_focus.png</alttexturenofocus>
+						<alttexturefocus border="40,5,5,5">buttons/toggle_alt_focus.png</alttexturefocus>
+					</control>
+					
+					<!-- MyPlex - Username -->
+					<control type="edit" id="106">
+						<width>560</width>
+						<height>42</height>
+						
+						<label>Username</label>
+						<font>font24</font>
+						<aligny>center</aligny>
+						
+						<textcolor>FFFFFFFF</textcolor>
+						<focusedcolor>FFFFFFFF</focusedcolor>
+						<textoffsetx>45</textoffsetx>
+						
+						<texturefocus border="10">shapes/blue_faded.png</texturefocus>
+						<texturenofocus>-</texturenofocus>
+					</control>
+					
+					<!-- MyPlex - Password -->
+					<control type="edit" id="107">
+						<width>560</width>
+						<height>42</height>
+						
+						<label>Password</label>
+						<font>font24</font>
+						<aligny>center</aligny>
+						<password>True</password>
+						
+						<textcolor>FFFFFFFF</textcolor>
+						<focusedcolor>FFFFFFFF</focusedcolor>
+						<textoffsetx>45</textoffsetx>
+						
+						<texturefocus border="10">shapes/blue_faded.png</texturefocus>
+						<texturenofocus border="10">-</texturenofocus>
+					</control>
+					
+					<control type="button" id="108">
+						<posx>460</posx>
+						<width>100</width>
+						<height>42</height>
+						
+						<font>font22</font>
+						<align>center</align>
+						<aligny>center</aligny>
+						<label>Save</label>
+						
+						<texturefocus border="10">shapes/blue_faded.png</texturefocus>
+						<texturenofocus border="10">shapes/rounded_white_20.png</texturenofocus>
+						
+						<textcolor>FFCCCCCC</textcolor>
+						<focusedcolor>FFFFFFFF</focusedcolor>
+						
+						<onclick lang="python">settingsDialog.saveConnectSettings()</onclick>
+					</control>
+					
+					<control type="button" id="109">
+						<posx>460</posx>
+						<width>100</width>
+						<height>42</height>
+						
+						<font>font22</font>
+						<align>center</align>
+						<aligny>center</aligny>
+						<label>Close</label>
+						
+						<texturefocus border="10">shapes/blue_faded.png</texturefocus>
+						<texturenofocus border="10">shapes/rounded_white_20.png</texturenofocus>
+						
+						<textcolor>FFCCCCCC</textcolor>
+						<focusedcolor>FFFFFFFF</focusedcolor>
+						
+						<onclick lang="python">settingsDialog.close()</onclick>
+					</control>
+				</control>
+				
+				<control type="grouplist" id="52">
+					<posx>220</posx>
+					<posy>70</posy>
+					<width>560</width>
+					<height>500</height>
+					<visible>ControlGroup(40).HasFocus(42)</visible>
+					<orientation>vertical</orientation>
+					<usecontrolcoords>true</usecontrolcoords>
+					<itemgap>5</itemgap>
+					<onleft>40</onleft>
+					
+					<control type="togglebutton" id="200">
+						<width>560</width>
+						<height>42</height>
+					
+						<label>Play TV Show Themes</label>
+						<font>font24</font>
+						<align>left</align>
+						<textoffsetx>45</textoffsetx>
+						<textcolor>FFFFFFFF</textcolor>
+						<focusedcolor>FFFFFFFF</focusedcolor>
+						
+						<texturenofocus border="40,5,5,5">buttons/toggle_no_focus.png</texturenofocus>
+						<texturefocus border="40,5,5,5">buttons/toggle_focus.png</texturefocus>
+						<alttexturenofocus border="40,5,5,5">buttons/toggle_alt_no_focus.png</alttexturenofocus>
+						<alttexturefocus border="40,5,5,5">buttons/toggle_alt_focus.png</alttexturefocus>
+					</control>					
+					<control type="togglebutton" id="201">
+						<width>560</width>
+						<height>42</height>
+					
+						<label>Queue Music Tracks</label>
+						<font>font24</font>
+						<align>left</align>
+						<textoffsetx>45</textoffsetx>
+						<textcolor>FFFFFFFF</textcolor>
+						<focusedcolor>FFFFFFFF</focusedcolor>
+						
+						<texturenofocus border="40,5,5,5">buttons/toggle_no_focus.png</texturenofocus>
+						<texturefocus border="40,5,5,5">buttons/toggle_focus.png</texturefocus>
+						<alttexturenofocus border="40,5,5,5">buttons/toggle_alt_no_focus.png</alttexturenofocus>
+						<alttexturefocus border="40,5,5,5">buttons/toggle_alt_focus.png</alttexturefocus>
+					</control>					
+					<control type="button" id="208">
+						<posx>460</posx>
+						<width>100</width>
+						<height>42</height>
+						
+						<font>font22</font>
+						<align>center</align>
+						<aligny>center</aligny>
+						<label>Save</label>
+						
+						<texturefocus border="10">shapes/blue_faded.png</texturefocus>
+						<texturenofocus border="10">shapes/rounded_white_20.png</texturenofocus>
+						
+						<textcolor>FFCCCCCC</textcolor>
+						<focusedcolor>FFFFFFFF</focusedcolor>
+						
+						<onclick lang="python">settingsDialog.saveExperienceSettings()</onclick>
+					</control>
+					
+					<control type="button" id="209">
+						<posx>460</posx>
+						<width>100</width>
+						<height>42</height>
+						
+						<font>font22</font>
+						<align>center</align>
+						<aligny>center</aligny>
+						<label>Close</label>
+						
+						<texturefocus border="10">shapes/blue_faded.png</texturefocus>
+						<texturenofocus border="10">shapes/rounded_white_20.png</texturenofocus>
+						
+						<textcolor>FFCCCCCC</textcolor>
+						<focusedcolor>FFFFFFFF</focusedcolor>
+						
+						<onclick lang="python">settingsDialog.close()</onclick>
+					</control>
+					
+				</control>
+				
+				<control type="grouplist" id="53">
+					<posx>220</posx>
+					<posy>70</posy>
+					<width>560</width>
+					<height>500</height>
+					<visible>ControlGroup(40).HasFocus(43)</visible>
+					<orientation>vertical</orientation>
+					<usecontrolcoords>true</usecontrolcoords>
+					<onleft>40</onleft>
+					<itemgap>5</itemgap>
+					
+					<!-- Zoom mode for slideshow -->
+					<control type="togglebutton" id="300">
+						<width>560</width>
+						<height>42</height>
+					
+						<label>Slide Show - Zoom Mode</label>
+						<font>font24</font>
+						<align>left</align>
+						<textoffsetx>45</textoffsetx>
+						<textcolor>FFFFFFFF</textcolor>
+						<focusedcolor>FFFFFFFF</focusedcolor>
+						
+						<texturenofocus border="40,5,5,5">buttons/toggle_no_focus.png</texturenofocus>
+						<texturefocus border="40,5,5,5">buttons/toggle_focus.png</texturefocus>
+						<alttexturenofocus border="40,5,5,5">buttons/toggle_alt_no_focus.png</alttexturenofocus>
+						<alttexturefocus border="40,5,5,5">buttons/toggle_alt_focus.png</alttexturefocus>
+					</control>
+					
+					<!-- slideshow time -->
+					<control type="edit" id="301">
+						<width>560</width>
+						<height>42</height>
+						
+						<label>Slide Show - Delay</label>
+						<font>font24</font>
+						<aligny>center</aligny>
+						
+						<textcolor>FFFFFFFF</textcolor>
+						<focusedcolor>FFFFFFFF</focusedcolor>
+						<disabledcolor>66FFFFFF</disabledcolor>
+						<textoffsetx>45</textoffsetx>
+						
+						<texturefocus border="10">shapes/blue_faded.png</texturefocus>
+						<texturenofocus>-</texturenofocus>
+					</control>
+					
+					
+					<control type="button" id="302">
+						<posx>460</posx>
+						<width>100</width>
+						<height>42</height>
+						
+						<font>font22</font>
+						<align>center</align>
+						<aligny>center</aligny>
+						<label>Save</label>
+						
+						<texturefocus border="10">shapes/blue_faded.png</texturefocus>
+						<texturenofocus border="10">shapes/rounded_white_20.png</texturenofocus>
+						
+						<textcolor>FFCCCCCC</textcolor>
+						<focusedcolor>FFFFFFFF</focusedcolor>
+						
+						<onclick lang="python">settingsDialog.savePhotoSettings()</onclick>
+					</control>
+					
+					<control type="button" id="303">
+						<posx>460</posx>
+						<width>100</width>
+						<height>42</height>
+						
+						<font>font22</font>
+						<align>center</align>
+						<aligny>center</aligny>
+						<label>Close</label>
+						
+						<texturefocus border="10">shapes/blue_faded.png</texturefocus>
+						<texturenofocus border="10">shapes/rounded_white_20.png</texturenofocus>
+						
+						<textcolor>FFCCCCCC</textcolor>
+						<focusedcolor>FFFFFFFF</focusedcolor>
+						
+						<onclick lang="python">settingsDialog.close()</onclick>
+					</control>
+				</control>
+				
+				<control type="grouplist" id="59">
+					<posx>220</posx>
+					<posy>70</posy>
+					<width>560</width>
+					<height>500</height>
+					<visible>ControlGroup(40).HasFocus(49)</visible>
+					<orientation>vertical</orientation>
+					<usecontrolcoords>true</usecontrolcoords>
+					<onleft>40</onleft>
+					<itemgap>5</itemgap>
+					
+					<control type="togglebutton" id="900">
+						<width>560</width>
+						<height>42</height>
+					
+						<label>Enable Debugging</label>
+						<font>font24</font>
+						<align>left</align>
+						<textoffsetx>45</textoffsetx>
+						<textcolor>FFFFFFFF</textcolor>
+						<focusedcolor>FFFFFFFF</focusedcolor>
+						
+						<texturenofocus border="40,5,5,5">buttons/toggle_no_focus.png</texturenofocus>
+						<texturefocus border="40,5,5,5">buttons/toggle_focus.png</texturefocus>
+						<alttexturenofocus border="40,5,5,5">buttons/toggle_alt_no_focus.png</alttexturenofocus>
+						<alttexturefocus border="40,5,5,5">buttons/toggle_alt_focus.png</alttexturefocus>
+					</control>
+					<control type="togglebutton" id="901">
+						<width>560</width>
+						<height>42</height>
+					
+						<label>Enable Caching</label>
+						<font>font24</font>
+						<align>left</align>
+						<textoffsetx>45</textoffsetx>
+						<textcolor>FFFFFFFF</textcolor>
+						<focusedcolor>FFFFFFFF</focusedcolor>
+						
+						<texturenofocus border="40,5,5,5">buttons/toggle_no_focus.png</texturenofocus>
+						<texturefocus border="40,5,5,5">buttons/toggle_focus.png</texturefocus>
+						<alttexturenofocus border="40,5,5,5">buttons/toggle_alt_no_focus.png</alttexturenofocus>
+						<alttexturefocus border="40,5,5,5">buttons/toggle_alt_focus.png</alttexturefocus>
+					</control>
+					<control type="button" id="902">
+						<posx>460</posx>
+						<width>100</width>
+						<height>42</height>
+						
+						<font>font22</font>
+						<align>center</align>
+						<aligny>center</aligny>
+						<label>Save</label>
+						
+						<texturefocus border="10">shapes/blue_faded.png</texturefocus>
+						<texturenofocus border="10">shapes/rounded_white_20.png</texturenofocus>
+						
+						<textcolor>FFCCCCCC</textcolor>
+						<focusedcolor>FFFFFFFF</focusedcolor>
+						
+						<onclick lang="python">settingsDialog.saveAdvancedSettings()</onclick>
+					</control>
+					
+					<control type="button" id="903">
+						<posx>460</posx>
+						<width>100</width>
+						<height>42</height>
+						
+						<font>font22</font>
+						<align>center</align>
+						<aligny>center</aligny>
+						<label>Close</label>
+						
+						<texturefocus border="10">shapes/blue_faded.png</texturefocus>
+						<texturenofocus border="10">shapes/rounded_white_20.png</texturenofocus>
+						
+						<textcolor>FFCCCCCC</textcolor>
+						<focusedcolor>FFFFFFFF</focusedcolor>
+						
+						<onclick lang="python">settingsDialog.close()</onclick>
+					</control>
+					
+				</control>
+
+			</control>
 		</control>
+		
+		<!-- Notification dialog -->
+		<control type="group" id="98">
+			<animation effect="fade" time="500">VisibleChange</animation>
+			<width>400</width>
+			<height>100</height>
+			<visible>False</visible>
+			<control type="image">
+				<posx>440</posx>
+				<posy>200</posy>
+				<width>400</width>
+				<height>100</height>
+				<texture border="10">shapes/black.png</texture>
+			</control>
+			<control type="image">
+				<posx>440</posx>
+				<posy>200</posy>
+				<width>400</width>
+				<height>100</height>
+				<texture border="10">shapes/blue_faded.png</texture>
+			</control>
+			<control type="label" id="99">
+				<posx>450</posx>
+				<posy>220</posy>
+				<width>380</width>
+				<height>40</height>
+				<align>center</align>
+				<aligny>center</aligny>
+				<label>xxxx</label>
+				<font>font26</font>
+				<textcolor>FFFFFFFF</textcolor>
+			</control>
+		</control>
+		
 	</controls>
 </window>
