@@ -24,7 +24,7 @@ Originally created by Mike McMullin (xmcnuggetx)  and currently being developed 
 
 **Option 2** -  plexforboxee 1.11 and newer
 
-1. Get root access to your Boxee via Boxee+hacks - http://boxeeplus.com
+1. Get root access to your Boxee via Boxee+hacks - http://boxeed.in/
 2. Download PlexforBoxee from http://grantmcwilliams.com/plexforboxee/download/plexee.plexforboxee-1.11.zip
 3. Extract the zip file into /data/.boxee/UserData/apps on the Boxee
 
