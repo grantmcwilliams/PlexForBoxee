@@ -26,8 +26,7 @@ Originally created by Mike McMullin (xmcnuggetx)  and currently being developed 
 
 1. Get root access to your Boxee via Boxee+hacks - http://boxeeplus.com
 2. Download PlexforBoxee from http://grantmcwilliams.com/plexforboxee/download/plexee.plexforboxee-1.11.zip
-3. Extract the zip file into /data/.boxee/UserData/apps on usb stick/drive
-4. Attach usb stick/drive to Boxee device
+3. Extract the zip file into /data/.boxee/UserData/apps on the Boxee
 
 **Option 3** - plexforboxee all versions
 
