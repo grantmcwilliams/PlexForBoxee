@@ -14,6 +14,8 @@ TODO
 Manual Install Instructions
 ---------------------------
 
+_**As of 31-Mar-2015 the Boxee application signing at http://boxee.tv is not working. So the latest release will not be available via the repository until this is fixed. To install the latest version use Options 2 or 3.**_
+
 *Option 1* - plexforboxee 1.10 in repository (all patches merged as of Oct 26, 2014)
 
 1. Navigate to Apps -> Repositories on your Boxee
