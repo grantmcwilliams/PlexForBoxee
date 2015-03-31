@@ -7,7 +7,7 @@ Originally created by Mike McMullin (xmcnuggetx)  and currently being developed 
 * Version 1.10 of the app is installable from the plexforboxee custom app repository outlined below. 
 * Version 1.11 and newer needs to be **manually installed due to Boxee's app signing site being broken**.
 
-###TODO
+####TODO
 * Add playing videos from Queue (in latest release for testing now)
 * Get Video Channels to work (in latest release for testing now)
 
