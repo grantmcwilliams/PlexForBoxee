@@ -1,10 +1,11 @@
 plexforboxee - A Plex Client for Boxee
 ================================
-Originally created by Mike McMullin (xmcnuggetx)  and currently being developed by Grant McWilliams https://github.com/grantmcwilliams
+Originally created by Mike McMullin (xmcnuggetx)  and currently being developed by Grant McWilliams and Hamish McNeish.
 
 ---
 
-The code is not complete - but the core functionality (browsing videos and streaming) works. As of February 23, 2014 the app is installable from the plexforboxee custom app repository outlined below. 
+Version 1.10 of the app is installable from the plexforboxee custom app repository outlined below. 
+Version 1.11 needs to be manually installed due to Boxee's app signing site being broken.
 
 TODO
 * Add playing videos from Queue
@@ -12,7 +13,7 @@ TODO
 * Get Video Channels to work (error 404)
 
 
-Manual Install Instructions
+Install Instructions
 ---------------------------
 
 *Option 1* - plexforboxee 1.10 in repository (all patches merged as of Oct 26, 2014)
@@ -22,7 +23,9 @@ Manual Install Instructions
 
 
 *Option 2*
-* If you have root access to your Boxee (via Boxee+hacks - http://boxeeplus.com) - copy the plexee app into /data/.boxee/UserData/apps
+* Get root access to your Boxee via Boxee+hacks - http://boxeeplus.com
+* Download PlexforBoxee from http://grantmcwilliams.com/plexforboxee/download/plexee.plexforboxee-1.11.zip
+* Extract the zip file into /data/.boxee/UserData/apps
 
 *Option 3*
 * If you have a closed device - then you'll need to get a developers certificate for your device.
