@@ -4,8 +4,7 @@ Originally created by Mike McMullin (xmcnuggetx)  and currently being developed 
 
 ---
 
-* Version 1.10 of the app is installable from the plexforboxee custom app repository outlined below. 
-* Version 1.11 and newer needs to be **manually installed due to Boxee's app signing site being broken**.
+All versions can now be installed via the repository!
 
 ####TODO
 * Add playing videos from Queue (in latest release for testing now)
@@ -15,20 +14,20 @@ Originally created by Mike McMullin (xmcnuggetx)  and currently being developed 
 ##Install Instructions
 
 
-**Option 1** - plexforboxee 1.10 in repository (all patches merged as of Oct 26, 2014)
+**Option 1** - Automated install from repository
 
 1. Navigate to Apps -> Repositories on your Boxee
 2. Click the + button on the top right to add the PlexforBoxee repository - http://grantmcwilliams.com/plexforboxee
-3. Browse the PlexforBoxee repository and add the Plexee App
+3. Browse the PlexforBoxee repository and add the Plexee App (a reboot may be necessary to see updates)
 
 
-**Option 2** -  plexforboxee 1.11 and newer
+**Option 2** - Manual install from repository
 
 1. Get root access to your Boxee via Boxee+hacks - http://boxeed.in/
-2. Download PlexforBoxee from http://grantmcwilliams.com/plexforboxee/download/plexee.plexforboxee-1.11.zip
+2. Download PlexforBoxee from http://grantmcwilliams.com/plexforboxee/download/plexee.plexforboxee-latest.zip
 3. Extract the zip file into /data/.boxee/UserData/apps on the Boxee
 
-**Option 3** - plexforboxee all versions
+**Option 3** - Self signed manual install
 
 1. If you have a closed device - then you'll need to get a developers certificate for your device.
 2. Login to your boxee account at http://www.boxee.tv
