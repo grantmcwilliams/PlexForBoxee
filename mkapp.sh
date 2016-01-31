@@ -3,7 +3,8 @@
 #repository project dir has to be the same name as the source project dir
 #eg. PlexForBoxee-beta
 
-UPLOADDIR=$(basename $PWD)
+UDIR=${PWD##*/}
+UPLOADDIR=${UDIR,,}
 APPREPO="192.168.1.101"
 APPPATH="/var/www/html/grantmcwilliams.com/${UPLOADDIR}"
 TMPDIR=$(mktemp -d)
@@ -45,6 +46,7 @@ if [[ -d ./app-files ]] ;then
 		rm -f plexee.plexforboxee-${APPVERSION}.zip 
 	fi
 	zip -r "plexee.plexforboxee-${APPVERSION}.zip" plexee.plexforboxee
+        ln -s plexee.plexforboxee-${APPVERSION}.zip plexee.plexforboxee-latest.zip
 	echo "Upload and sign the zip file at http://bbx.boxee.tv/developer/appedit?appid=plexee.plexforboxee"
 	echo "then download the signature file to $PWD and resume this script"
 	read
@@ -60,20 +62,17 @@ if [[ -d ./app-files ]] ;then
 		echo "Unable to upload plexee.plexforboxee-${APPVERSION}.zip and signature to ${APPREPO} - exiting"
 		exit 1
 	fi
-	if ! ssh root@${APPREPO} "chmod 777 ${APPPATH}/download" ;then
-		echo "Unable to change permissions on ${APPPATH}/download"
-	fi
-	if ! ssh root@${APPREPO} "restorecon ${APPPATH}/download" ;then
+	if ! ssh root@${APPREPO} "chmod 777 ${APPPATH}/download ; restorecon ${APPPATH}/download" ;then
 		echo "Unable to change permissions on ${APPPATH}/download"
 	fi
 	if scp root@${APPREPO}:${APPPATH}/index.xml ${TMPDIR}/index.xml ; then 
-		sed -i "s/<version>[0-9]\.[0-9]<\/version>/<version>${APPVERSION}<\/version>/g" ${TMPDIR}/index.xml 
-		sed -i "s/(v. [0-9]\.[0-9])/(v. ${APPVERSION})/g" ${TMPDIR}/index.xml 
+		sed -i "s/<version>[0-9]\.[0-9][0-9]?<\/version>/<version>${APPVERSION}<\/version>/g" ${TMPDIR}/index.xml 
+		sed -i "s/(v. [0-9]\.[0-9][0-9]?)/(v. ${APPVERSION})/g" ${TMPDIR}/index.xml 
 	else
 		echo "Unable to download ${APPPATH}/index.xml -exiting"
 		exit 1
 	fi	
-	if ! scp ${TMPDIR}/index.xml  "root@${APPREPO}:${APPPATH}/index.xml" ; then 
+	if ! scp ${TMPDIR}/index.xml ${APPPATH}/download/plexee.plexforboxee-latest.zip "root@${APPREPO}:${APPPATH}/" ; then 
 		echo "Unable to upload new repository index - exiting"
 		exit 1
 	fi
