@@ -1,7 +1,7 @@
 <app>
 	<id>plexee.plexforboxee</id>
 	<name>Plexee</name>
-	<version>1.3</version>
+	<version>1.11</version>
 	<description>Plex Media Server client app for Boxee</description>
 	<thumb>http://grantmcwilliams.com/plexforboxee/thumb.png</thumb>
 	<repository>http://grantmcwilliams.com/plexforboxee</repository>
@@ -12,5 +12,6 @@
 	<email>grant@soundlinuxtraining.com</email>
 	<platform>win,linux,dlink.dsm380,intel.ce4100,iomega.zt,iomega.z1</platform>
 	<minversion>1.2</minversion>
+        <test-app>true</test-app>
 </app>
 
