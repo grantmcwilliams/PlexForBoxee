@@ -1,4 +1,4 @@
-import base64
+﻿import base64
 import cgi
 import mc
 import urllib
@@ -125,6 +125,26 @@ class PlexManager(object):
 		"""
 		self.myplex = MyPlexService(self)
 
+	def getLocalUsers(self):
+		users = []
+		for key in self.myServers:
+			server = self.myServers[key]
+			a = self.myplex.getLocalUsers(server)
+			if not a is None:
+				users.extend(a)
+		return users
+	
+	def getServers(self):
+		return self.myServers
+		
+	def switchUser(self, token, machineIdentifier):
+		servers = self.getServers()
+		for k in servers:
+			server = servers[k]
+			server.userAccessToken = None
+			if machineIdentifier == server.machineIdentifier:
+				server.userAccessToken = token
+	
 	def getServer(self, machineIdentifier):
 		"""
 		Return server from machine identifier
@@ -205,9 +225,12 @@ class PlexManager(object):
 class MyPlexService(object):
 	BASE_URL = "https://plex.tv"
 	AUTH_URL = BASE_URL + "/users/sign_in.xml"
-	LIBRARY_URL = BASE_URL + "/pms/system/library/sections?auth_token=%s"
-	SERVERS_URL = BASE_URL + "/pms/servers?auth_token=%s"
-	QUEUE_URL = BASE_URL + "/pms/playlists/queue/all?auth_token=%s"
+	LIBRARY_URL = BASE_URL + "/api/system/library/sections?auth_token=%s"
+	SERVERS_URL = BASE_URL + "/api/servers?auth_token=%s"
+	QUEUE_URL = BASE_URL + "/api/playlists/queue/all?auth_token=%s"
+	MULTIUSER_URL = BASE_URL + "/api/home/users?auth_token=%s"
+	SWITCHUSER_URL = BASE_URL + "/api/home/users/%s/switch?auth_token=%s"
+	GETUSERS_URL = BASE_URL + "/servers/%s/access_tokens.xml?auth_token=%s"
 
 	def __init__(self, manager, username = None, password = None):
 		self.username = None
@@ -257,6 +280,60 @@ class MyPlexService(object):
 		else:
 			return None
 
+	def getMultiUserData(self):
+		if self.authenticationToken:
+			url = MyPlexService.MULTIUSER_URL % self.authenticationToken
+			return mc.Http().Get(url)
+		else:
+			return None
+
+	def getLocalUsers(self, server):
+		if self.authenticationToken:
+			url = MyPlexService.GETUSERS_URL % (server.machineIdentifier, self.authenticationToken)
+			data = mc.Http().Get(url)
+			if not data:
+				util.logDebug("Error failed to access users %s" % url);
+				return None
+
+			userPlusData = self.getMultiUserData()
+			plusTree = ElementTree.fromstring(userPlusData)
+				
+			tree = ElementTree.fromstring(data)
+			users = []
+			#Add current user
+			myplex = self.plexManager.myplex
+			user = dict()
+			user['name'] = myplex.username
+			user['id'] = '0'
+			user['token'] = myplex.authenticationToken
+			user['machineidentifier'] = '0'
+			user['thumb'] = ''
+			users.append(user)
+			
+			for child in tree:
+				if not child.attrib.has_key("allow_sync"):
+					#Skip non-user records
+					continue
+				user = dict()
+				user['name'] = child.attrib.get("title","")
+				user['id'] = child.attrib.get("id","")
+				user['token'] = child.attrib.get("token","")
+				user['machineidentifier'] = server.machineIdentifier
+				users.append(user)
+			
+			for user in users:
+				#try and match more information
+				for c in plusTree:
+					if c.attrib.get("id","") == user['id']:
+						user['thumb'] = c.attrib.get("thumb","")
+					elif user['id'] == '0' and c.attrib.get("username","") == user['name']:
+						user['thumb'] = c.attrib.get("thumb","")
+						user['id'] = c.attrib.get("id","")
+			
+			return users
+		else:
+			return None
+		
 	def getServers(self):
 		localServers = dict()
 		remoteServers = dict()
@@ -287,7 +364,7 @@ class MyPlexService(object):
 							util.logInfo("--> Resolving local addresses")
 							resolved = False
 							for addr in localAddresses:
-								data = mc.Http().Get("http://"+addr+":32400")
+								data = mc.Http().Get("http://"+addr+":32400/?X-Plex-Token="+accessToken)
 								util.logDebug("--> Trying local address %s:32400" % addr)
 								if data:
 									tree = ElementTree.fromstring(data)
@@ -296,10 +373,9 @@ class MyPlexService(object):
 										util.logInfo("--> Using local address %s:32400 instead of remote address" % addr)
 										server = PlexServer(addr, "32400", accessToken)
 										resolved = True
-										server.isLocal = True
 										break
 							if not resolved:
-								util.logInfo("--> Using remote address unable to resolve local address" % addr)
+								util.logInfo("--> Using remote address %s unable to resolve local address" % host)
 								server = PlexServer(host, port, accessToken)
 
 						if server is None or not server.isAuthenticated():
@@ -311,13 +387,12 @@ class MyPlexService(object):
 		
 		return localServers, remoteServers, foundServer
 
-##
-# Encapsulates a Plex server (local or remote)
-#	
 class PlexServer(object):
 	"""
-	Provides an interface to a Plex server
+	Encapsulates a Plex server (local or remote)
 	"""
+
+	#TODO: Add islocal
 	CHANNEL_URL = "/channels/all"
 	LIBRARY_URL = "/library/sections"
 	SERVERS_URL = "/servers"
@@ -341,7 +416,9 @@ class PlexServer(object):
 		self.host = host
 		self.port = port
 		self.accessToken = accessToken
+		self.userAccessToken = None
 		self.isLocal = False
+		self.multiuser = False
 
 		self.friendlyName = None
 		self.machineIdentifier = None
@@ -353,12 +430,18 @@ class PlexServer(object):
 		self.version = None
 
 		self._updateSettings()
-
+	
+	def getCurrentAccessToken(self):
+		if self.userAccessToken != None:
+			return self.userAccessToken
+		return self.accessToken
+	
 	def _updateSettings(self):
 		data = mc.Http().Get(self._getRootUrl())
 		if data:
 			tree = ElementTree.fromstring(data)
 			self.friendlyName = tree.attrib.get("friendlyName", None)
+			self.multiuser = tree.attrib.get("multiuser", False)
 			self.machineIdentifier = tree.attrib.get("machineIdentifier", None)
 			self.platform = tree.attrib.get("platform", None)
 			self.platformVersion = tree.attrib.get("platformVersion", None)
@@ -367,7 +450,7 @@ class PlexServer(object):
 			self.transcoderVideoResolutions = tree.attrib.get("transcoderVideoResolutions", None)
 			self.version = tree.attrib.get("version", None)
 
- 	def isAuthenticated(self):
+	def isAuthenticated(self):
 		return self.machineIdentifier != None
 
 	def getData(self, url, args = None):
@@ -408,11 +491,12 @@ class PlexServer(object):
 		else: url_query = currentArgs
 
 		url_parts[4] = urllib.urlencode(url_query)
-		if not self.isLocal and self.accessToken:
+		accessToken = self.getCurrentAccessToken()
+		if not self.isLocal and accessToken:
 			if url_parts[4] != "":
-				url_parts[4] = url_parts[4] + "&X-Plex-Token=" + self.accessToken
+				url_parts[4] = url_parts[4] + "&X-Plex-Token=" + accessToken
 			else:
-				url_parts[4] = "X-Plex-Token=" + self.accessToken
+				url_parts[4] = "X-Plex-Token=" + accessToken
 		
 		url = urlparse.urlunparse(url_parts)
 		return url

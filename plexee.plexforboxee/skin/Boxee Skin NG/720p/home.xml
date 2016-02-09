@@ -65,7 +65,7 @@ homeWindow.load()
 					<width>1225</width>
 					<orientation>horizontal</orientation>
 					<itemgap>5</itemgap>
-					<onup>20</onup>
+					<onup>10</onup>
 					<ondown>200</ondown>
 					
 					<content type="action">
@@ -808,7 +808,7 @@ homeWindow.load()
 			<height>60</height>
 
 			<ondown>1000</ondown>
-			<onright>20</onright>
+			<onright>10</onright>
 			<onleft>-</onleft>
 
 				<texturenofocus border="10">shapes/faded.png</texturenofocus>
@@ -852,16 +852,32 @@ homeWindow.load()
 			</control>
 		</control>
 		<!-- END: Music Player -->
+        
+		<control type="button" id="10">
+			<posx>876</posx>
+			<posy>18</posy>
+			<width>64</width>
+			<height>64</height>
+			
+			<ondown>1000</ondown>
+			<onright>20</onright>
+			<onleft>600</onleft>
+			
+			<texturenofocus>buttons/user.png</texturenofocus>
+			<texturefocus>buttons/user_focus.png</texturefocus>
+			
+			<onclick lang="python">homeWindow.userClicked()</onclick>
+		</control>
 
 		<control type="button" id="20">
-			<posx>908</posx>
+			<posx>956</posx>
 			<posy>18</posy>
 			<width>64</width>
 			<height>64</height>
 			
 			<ondown>1000</ondown>
 			<onright>30</onright>
-			<onleft>600</onleft>
+			<onleft>10</onleft>
 			
 			<texturenofocus>buttons/view_list.png</texturenofocus>
 			<texturefocus>buttons/view_list_focus.png</texturefocus>
@@ -869,7 +885,7 @@ homeWindow.load()
 			<onclick lang="python">homeWindow.playlistClicked()</onclick>
 		</control>
 		<control type="button" id="30">
-			<posx>1004</posx>
+			<posx>1036</posx>
 			<posy>18</posy>
 			<width>64</width>
 			<height>64</height>
@@ -885,7 +901,7 @@ homeWindow.load()
 		</control>
 		
 		<control type="button" id="40">
-			<posx>1100</posx>
+			<posx>1116</posx>
 			<posy>18</posy>
 			<width>64</width>
 			<height>64</height>

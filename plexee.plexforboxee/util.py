@@ -72,10 +72,11 @@ def logDebug(msg):
 			the_method = stack[1][0].f_code.co_name
 			print "Plexee: %s, %s: %s" % (the_class, the_method, msg)
 		except:
-			pass
+			mc.LogDebug("Plexee: " + msg)
+			#pass
 	else:
-		pass
-		#mc.LogDebug("Plexee: " + msg)
+		#pass
+		mc.LogDebug("Plexee: " + msg)
 
 def logInfo(msg):
 #	msg = cleanString(msg)
