@@ -1,4 +1,4 @@
-#
+﻿#
 # ElementTree
 # $Id: ElementTree.py 2326 2005-03-17 07:45:21Z fredrik $
 #

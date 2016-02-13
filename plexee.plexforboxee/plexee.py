@@ -1,4 +1,5 @@
-﻿import mc
+﻿import traceback
+import mc
 import os
 import sys
 import urllib
@@ -94,35 +95,43 @@ class PlexeeWindow(object):
 		self.window = None
 	
 	def load(self):
-		util.logDebug("On load %s started" % self.getId())
+		util.logDebug("On load %i started" % self.getId())
 		try:
 			self.onLoad()
-			util.logDebug("On load %s ended" % self.getId())
+			util.logDebug("On load %i ended" % self.getId())
 		except:
-			util.logError("Unexpected error whole loading: %s" % sys.exc_info()[0])			
+			util.logError("Unexpected error while loading: %s" % sys.exc_info()[0])
+			util.logError('-'*60)
+			util.logError(traceback.format_exc(10))
+			util.logError('-'*60)
 
 	def unload(self):
-		util.logDebug("On unload %s started" % self.getId())
+		util.logDebug("On unload %i started" % self.getId())
 		try:
 			self.onUnload()
-			util.logDebug("On unload %s ended" % self.getId())
+			util.logDebug("On unload %i ended" % self.getId())
 		except:
-			util.logError("Unexpected error while unloading: %s" % sys.exc_info()[0])			
+			util.logError("Unexpected error while unloading: %s" % sys.exc_info()[0])
+			util.logError('-'*60)
+			util.logError(traceback.format_exc(10))
+			util.logError('-'*60)
 
 	def activate(self):
 		try:
 			self.plexee.player.stopWaiting()
-			id = self.getId()
-			util.logDebug("Activate Window %s started" % id)
-			mc.ActivateWindow(id)
+			util.logDebug("Activate Window %i started" % self.getId())
+			mc.ActivateWindow(self.getId())
 			#Initialise links to controls
 			self.window = mc.GetWindow(self.getId())
 			self.init()
 			#Do any actions on activation of window
 			self.onActivate()
-			util.logDebug("Activate Window %s ended" % id)
+			util.logDebug("Activate Window %i ended" % self.getId())
 		except:
 			util.logError("Unexpected error while activating: %s" % sys.exc_info()[0])
+			util.logError('-'*60)
+			util.logError(traceback.format_exc(10))
+			util.logError('-'*60)
 
 	def onActivate(self): pass
 	def onLoad(self): pass
@@ -1081,10 +1090,12 @@ class PlexeeConnectionDialog(PlexeeDialog):
 			if config.isManualConnectOn():
 				host = config.getManualHost()
 				port = str(config.getManualPort())
-				plexManager.addMyServer(host, port)
-				if not plexManager.myServers:
+				server = plexManager.addMyServer(host, port)
+				if server.isTokenRequired and not config.isMyPlexConnectOn():
+					self.addConnectionError("MANUAL connection failed to connect to plex server:[CR]"+host+":"+port+"[CR][CR]It requires an authenticated user. Please connect using MyPlex.")
+				elif not plexManager.myServers:
 					#Manual set but no server found
-					self.addConnectionError("Failed to connect to plex server: "+host+":"+port+"[CR][CR]Check the server IP and port is correct.")
+					self.addConnectionError("MANUAL connection failed to connect to plex server:[CR]"+host+":"+port+"[CR][CR]Check the server IP and port is correct.")
 
 			#try GDM auto discovery
 			if config.isAutoConnectOn():
@@ -1093,7 +1104,12 @@ class PlexeeConnectionDialog(PlexeeDialog):
 				if serverList:
 					#GDM servers found
 					for serverKey in serverList:
-						plexManager.addMyServer(serverList[serverKey]['ip'], serverList[serverKey]['port'])
+						host = serverList[serverKey]['ip']
+						port = serverList[serverKey]['port']
+						server = plexManager.addMyServer(host, port)
+						if server.isTokenRequired and not config.isMyPlexConnectOn():
+							self.addConnectionError("GDM failed to connect to plex server:[CR]"+host+":"+port+"[CR][CR]It requires an authenticated user. Please connect using MyPlex.")
+
 				else:
 					#GDM enabled - but no servers found
 					self.addConnectionError("GDM - No servers found!" + \
@@ -1136,11 +1152,10 @@ class PlexeeConnectionDialog(PlexeeDialog):
 		finally:
 			mc.HideDialogWait()
 
-##
-#The dialog object for the for User Dialog screen
-#
 class PlexeeUserDialog(PlexeeDialog):
-
+	"""
+	The dialog object for the for User Dialog screen
+	"""
 	def getId(self): return Plexee.DIALOG_USER_ID
 	
 	def __init__(self, plexee): PlexeeDialog.__init__(self, plexee)
@@ -1154,8 +1169,9 @@ class PlexeeUserDialog(PlexeeDialog):
 	def onLoad(self):
 		self.message.SetVisible(True)
 		users = self.plexee.plexManager.getLocalUsers()
-		if len(users) == 1:
-			self.message.SetLabel("There is no user to switch to! (You can set these up on you Plex Server)")
+		if len(users) < 2:
+			self.message.SetLabel("There is no other user to switch to! (You can set these up on you Plex Server)")
+			self.message.SetVisible(True)
 			return
 		else:
 			self.message.SetVisible(False)
@@ -1372,8 +1388,51 @@ class PlexeeSettingsDialog(PlexeeDialog):
 #The dialog object for the for Settings Dialog screen
 #
 class PlexeeConfig(object):
+	
+	@staticmethod
+	def getUserSettingsFile():
+		return os.path.join(PlexeeConfig.getUserSettingsFilepath(), 'registry.xml')
+
+	@staticmethod
+	def getUserSettingsFilepath():
+		profilePath = xbmc.translatePath("special://profile")
+		return os.path.join(profilePath, 'apps', mc.GetApp().GetId())
+
 	def __init__(self):
-		self.config = mc.GetApp().GetLocalConfig()
+		#Ok check config file is useable - this seems to be a common issue for some
+		settingsFile = PlexeeConfig.getUserSettingsFile()
+		altSettingsFile = os.path.join(os.getcwd(), 'registry.xml')
+
+		self.config = None
+
+		if util.fileExists(altSettingsFile):
+			#We've been through this all before... Just run with the alternate file
+			util.logInfo("Using alternate settings file %s" % altSettingsFile)
+			self.config = util.Config(altSettingsFile)
+			if not self.config.isValid(): self.config = None
+
+		if self.config is None:
+			testConfig = util.Config(settingsFile)
+			boxeeConfig = mc.GetApp().GetLocalConfig()
+			boxeeConfig.SetValue('test','1')
+			#Reload file
+			testConfig = util.Config(settingsFile)
+			
+			if testConfig.isValid() and '1' == testConfig.GetValue('test'):
+				#Boxee settings looks fine
+				util.logInfo("The boxee settings file appears to be ok and will be used")
+				self.config = boxeeConfig
+			else:
+				#The default settings file is not usable
+				util.logError("The settings file is not working, check file exists and permissions are ok for [%s]" % settingsFile)
+				util.logInfo("Creating/Using alternate settings file [%s]" % altSettingsFile)
+				self.config = util.Config(altSettingsFile)
+				if not self.config.isValid():
+					util.logError("The Boxee settings file looks like it may not be working, the alternate settings file failed. Running with the Boxee settings file")
+					mc.ShowDialogNotification("It looks like there was a problem with saving your user settings.\n\nPlexee will run but your settings may not be saved.")
+					#Favour Boxee's config handler incase it is actually working
+					self.config = mc.GetApp().GetLocalConfig()
+
 	def _isFlagSet(self, name, default=False):
 		val = self.config.GetValue(name)
 		if val == "" and default:
@@ -1492,7 +1551,7 @@ class PlexeePlayer(object):
 			return
 		
 		#If the player is already playing - and it's not another theme then don't play
-		if mc.GetPlayer().IsPlaying() and not self.isPlayingTheme():
+		if mc.GetPlayer().IsPlaying() and not self.isPlayingTheme:
 			return
 			
 		url = ""
@@ -1667,7 +1726,20 @@ class Plexee(object):
 	DISPLAY_AS_CONTENT = ["artist","album","photo","season","artist_search","person_search","albums"]
 	
 	def __init__(self):
-		self.plexManager = plex.PlexManager()
+		try:
+			deviceId = mc.GetDeviceId()
+		except:
+			deviceId = str(uuid.getnode())
+
+		self.plexManager = plex.PlexManager({
+			'platform':'Boxee',
+			'platformversion':'System.BuildVersion',
+			'provides':'player',
+			'product':'Plexee',
+			'version':'1.0',
+			'device':'Windows',
+			'deviceid':deviceId
+		})
 		self.config = PlexeeConfig()
 		self._windows = dict()
 		self.player = PlexeePlayer(self)
@@ -1983,7 +2055,6 @@ class Plexee(object):
 		#Set title item art/thumb to display if needed
 		titleListItem.SetProperty("art", tree.attrib.get("art",""))
 		titleListItem.SetProperty("thumb", tree.attrib.get("thumb",""))
-		dataHash = util.hash(data)
 		titleListItem.SetProperty("hash", dataHash)
 		
 		childListItems = mc.ListItems()
@@ -2545,9 +2616,9 @@ class Plexee(object):
 			self.player.playMusicItems(items)
 
 	def activateWindow(self, id):
-		util.logDebug("Activate window %s started" % id)
+		util.logDebug("Activate window %i started" % id)
 		mc.ActivateWindow(id)
-		util.logDebug("Activate window %s ended" % id)
+		util.logDebug("Activate window %i ended" % id)
 		return mc.GetWindow(id)
 
 	def _handlePhotoItem(self, listItem):

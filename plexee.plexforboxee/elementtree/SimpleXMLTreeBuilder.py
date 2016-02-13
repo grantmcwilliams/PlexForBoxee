@@ -1,4 +1,4 @@
-#
+﻿#
 # ElementTree
 # $Id: SimpleXMLTreeBuilder.py 1862 2004-06-18 07:31:02Z Fredrik $
 #
