@@ -1,22 +1,10 @@
-﻿import os
-import mc, xbmc
+import mc
 import datetime
 import inspect
 import md5
-import urllib2
-import urllib
-from elementtree import ElementTree
 
 class Constants(object):
 	IS_DEBUG = -1
-
-def isnumber(x):
-	# "Is x a number? We say it is if it has an __int__ method."
-	return hasattr(x, '__int__')
-
-def fileExists(f): return os.access(f, os.F_OK)
-def fileIsReadable(f): return os.access(f, os.R_OK)
-def fileIsWriteable(f): return os.access(f, os.W_OK)
 
 def hash(string):
 	return md5.new(string).hexdigest()
@@ -82,21 +70,21 @@ def logDebug(msg):
 			stack = inspect.stack()
 			the_class = stack[1][0].f_locals["self"].__class__
 			the_method = stack[1][0].f_code.co_name
-			print "DEBUG Plexee: %s, %s: %s" % (the_class, the_method, str(msg))
+			print "Plexee: %s, %s: %s" % (the_class, the_method, msg)
 		except:
-			print("DEBUG Plexee: " + str(msg))
+			mc.LogDebug("Plexee: " + msg)
 			#pass
 	else:
 		#pass
-		print("DEBUG Plexee: " + str(msg))
+		mc.LogDebug("Plexee: " + msg)
 
 def logInfo(msg):
 #	msg = cleanString(msg)
-	print("INFO  Plexee: "+str(msg))
+	mc.LogInfo("Plexee: "+msg)
 	
 def logError(msg):
 #	msg = cleanString(msg)
-	print("ERROR Plexee: "+str(msg))
+	mc.LogError("Plexee: "+msg)
 
 def formatEpisodeTitle(season, episode, title):
 	if season == "":
@@ -124,100 +112,3 @@ def getProperties(itemlist, property):
 		results.append(vals)	
 	return results
 	
-class Http(object):
-	def __init__(self):
-		self.opener = urllib2.build_opener(urllib2.HTTPHandler)
-		self.headers = dict()
-		self.code = 0
-
-	def GetHttpResponseCode(self):
-		return self.code
-
-	def Get(self, url):
-		request = urllib2.Request(url)
-		for p in self.headers:
-			request.add_header(p, self.headers[p])
-		try:
-			resp = self.opener.open(request)
-			self.code = resp.code
-			return resp.read()
-		except urllib2.HTTPError, e:
-			self.code = e.code
-			if e.code == 201:
-				return e.read()
-			return None
-		except urllib2.URLError:
-			#Failed to access
-			self.code = -1
-			return None
-
-	def Reset(self):
-		self.code = 0
-		self.headers.clear()
-
-	def Post(self, url, data):
-		request = urllib2.Request(url, data)
-		for p in self.headers:
-			request.add_header(p, self.headers[p])
-		request.get_method = lambda: 'POST'
-		try:
-			resp = self.opener.open(request)
-			self.code = resp.code
-			return resp.read()
-		except urllib2.HTTPError, e:
-			self.code = e.code
-			if e.code == 201:
-				return e.read()
-			return None
-
-	def SetHttpHeader(self, prop, value):
-		self.headers[prop] = value
-
-class Config:
-	"""
-	Alternate config to the mc config class
-	Used when the mc config isn't working
-	"""
-	def __init__(self, filepath):
-		self.__configFile = filepath
-		self.__tree = None
-		self.__isvalid = False
-		self.__lastModified = -1
-		try:
-			if not fileExists(filepath):
-				f = open(filepath, 'w')
-				f.write('<registry/>')
-				f.close()
-				self.__lastModified = os.stat(filepath).st_mtime
-			self.__tree = ElementTree.parse(filepath)
-			self.__isvalid = True
-		except IOError:
-			#Error creating file.... permissions problem?
-			logError("Failed to create settings file at %s" % filepath)
-
-	def isValid(self): return self.__isvalid
-	
-	def GetValue(self, key):
-		mt = os.stat(self.__configFile).st_mtime
-		if mt != self.__lastModified:
-			#File changed - reload
-			self.__tree = ElementTree.parse(self.__configFile)
-			self.__lastModified = mt
-		for child in self.__tree.getroot():
-			if child.attrib['id'] == key:
-				return child.text
-		return None
-
-	def SetValue(self, key, value):
-		#Update value in file
-		found = False
-		root = self.__tree.getroot()
-		for child in root:
-			if child.attrib['id'] == key:
-				child.text = value
-				break
-		if not found:
-			e = ElementTree.Element('value', {'id':key})
-			e.text = value
-			root.append(e)
-		self.__tree.write(self.__configFile)

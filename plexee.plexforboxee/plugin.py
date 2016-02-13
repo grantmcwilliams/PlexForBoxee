@@ -1,4 +1,4 @@
-﻿import mc
+import mc
 from plexee import Plexee, PlexeeSettingsDialog, PlexeeConfig, PlexeeConnectionDialog, PlexeePlayDialog
 
 # ENTRY POINT ##################################################################

@@ -1,4 +1,0 @@
-﻿HOST='10.1.3.200'
-PORT='32400'
-USERNAME='mcneishh'
-PASSWORD='B5_Black_Omega'

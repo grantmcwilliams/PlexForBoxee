@@ -1,4 +1,4 @@
-﻿#
+#
 # ElementTree
 # $Id: ElementPath.py 1858 2004-06-17 21:31:41Z Fredrik $
 #
