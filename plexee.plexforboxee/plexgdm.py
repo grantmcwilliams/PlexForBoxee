@@ -1,4 +1,4 @@
-import sys
+﻿import sys
 import struct
 import time
 import util
@@ -82,7 +82,7 @@ class PlexGDM:
 		if PMS_list=={}:
 			util.logDebug("GDM: No servers discovered")
 		else:
-			util.logDebug("GDM: Servers discovered: %d" % len(PMS_list))
+			util.logDebug("GDM: Servers discovered: %i" % len(PMS_list))
 			for uuid in PMS_list:
 				msg = "%s %s:%s" % (PMS_list[uuid]['serverName'], PMS_list[uuid]['ip'], PMS_list[uuid]['port'])
 				util.logDebug(msg)

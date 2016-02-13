@@ -1,12 +1,12 @@
 <app>
 	<id>plexee.plexforboxee</id>
 	<name>Plexee</name>
-	<version>1.11</version>
+	<version>1.12</version>
 	<description>Plex Media Server client app for Boxee</description>
 	<thumb>http://grantmcwilliams.com/plexforboxee/thumb.png</thumb>
 	<repository>http://grantmcwilliams.com/plexforboxee</repository>
 	<media>video</media>
-	<copyright>Mike McMullin and Grant McWilliams</copyright>
+	<copyright>Mike McMullin, Grant McWilliams and Hamish McNeish</copyright>
 	<type>skin</type>
 	<startWindow>plugin</startWindow>
 	<email>grant@soundlinuxtraining.com</email>
