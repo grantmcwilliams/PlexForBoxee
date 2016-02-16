@@ -13,4 +13,4 @@ All versions can now be installed via the repository!
 
 ##Install Instructions
 
-See the wiki for installation instructions - https://github.com/grantmcwilliams/PlexForBoxee/wiki
+See the wiki for installation instructions - https://github.com/grantmcwilliams/PlexForBoxee/wiki/Installation
