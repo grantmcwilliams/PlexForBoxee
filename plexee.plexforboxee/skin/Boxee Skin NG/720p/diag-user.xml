@@ -1,0 +1,150 @@
+<?xml version="1.0"?>
+<window type="dialog" id="15004">
+	<allowoverlay>no</allowoverlay>
+	<zorder>0</zorder>
+	<defaultcontrol>300</defaultcontrol>
+	<onload lang="python">
+<![CDATA[
+userDialog = plexee.getUserDialog()
+userDialog.load()
+]]>	
+	</onload>
+	<onunload lang="python">userDialog.unload()</onunload>
+	
+	<controls>
+		<!-- BACKGROUND =============================================================-->
+		
+		<!-- dim the lower window -->
+		<control type="image">
+			<width>1280</width>
+			<height>720</height>
+			<colordiffuse>CC000000</colordiffuse>
+			<texture>shapes/square.png</texture>
+		</control>
+		
+		<control type="group">
+			<posx>240</posx>
+			<posy>110</posy>
+			<width>800</width>
+			<height>400</height>
+			
+			<!-- setting window background -->
+			<control type="image">
+				<width>800</width>
+				<height>400</height>
+				<colordiffuse>FF0E1418</colordiffuse>
+				<texture border="10">shapes/rounded.png</texture>
+			</control>
+			
+			<!-- setting window outline -->
+			<control type="image">
+				<width>800</width>
+				<height>400</height>
+				<texture border="10">shapes/rounded_outline.png</texture>
+			</control>
+			
+			
+			<!-- TITLE ==================================================================-->
+			<control type="image">
+				<posx>10</posx>
+				<posy>50</posy>
+				<width>780</width>
+				<height>3</height>
+				<colordiffuse>33FFFFFF</colordiffuse>
+				<texture>shapes/square.png</texture>
+			</control>
+			
+			<control type="label">
+				<posx>10</posx>
+				<width>780</width>
+				<height>60</height>
+
+				<align>center</align>
+				<aligny>center</aligny>
+				<label>[B]Select a User[/B]</label>
+				<font>font40</font>
+				<textcolor>FFFFFFFF</textcolor>
+			</control>
+			
+			<!-- CONTENTS ===============================================================-->
+			<control type="label" id="200">
+				<posx>200</posx>
+				<posy>100</posy>
+				<width>400</width>
+				<height>100</height>
+				<wrapmultiline>true</wrapmultiline>
+				<font>font22</font>
+				<textcolor>66FFFFFF</textcolor>
+				<align>center</align>
+				<label>Loading Users....</label>
+			</control>
+					
+			<control type="list" id="300">
+				<posx>50</posx>
+				<posy>150</posy>
+				<width>700</width>
+				<height>200</height>			
+				<orientation>horizontal</orientation>
+				<itemgap>5</itemgap>			
+
+				<content type="action">
+					<onclick lang="Python">plexee.getUserDialog().userClicked()</onclick>
+				</content>
+			
+				<itemlayout width="150" height="100">
+					<control type="image">
+						<posx>5</posx>
+						<posy>5</posy>
+						<width>80</width>
+						<height>80</height>
+						<aspectratio>scale</aspectratio>
+						<texture fallback="default_icons/case_artist2.png">$INFO[ListItem.Property(image0)]</texture>
+					</control>
+					<control type="label">
+						<posx>50</posx>
+						<posy>90</posy>
+						<width>150</width>
+						<height>40</height>
+						<wrapmultiline>true</wrapmultiline>
+						<font>font18</font>
+						<textcolor>66FFFFFF</textcolor>
+						<align>center</align>
+						<label>$INFO[ListItem.Property(custom:name)]</label>
+					</control>
+				</itemlayout>
+			
+				<focusedlayout width="150" height="100">
+					<control type="image">
+						<posx>0</posx>
+						<posy>0</posy>
+						<width>89</width>
+						<height>89</height>
+						<visible>Control.HasFocus(300)</visible>
+						<texture border="10">shapes/blue_faded.png</texture>
+					</control>
+					
+					<control type="image">
+						<posx>5</posx>
+						<posy>5</posy>
+						<width>80</width>
+						<height>80</height>
+						<aspectratio>scale</aspectratio>
+						<texture fallback="default_icons/case.png">$INFO[ListItem.Property(image0)]</texture>
+					</control>
+					<control type="label">
+						<posx>50</posx>
+						<posy>90</posy>
+						<width>150</width>
+						<height>40</height>
+						<wrapmultiline>true</wrapmultiline>
+						<font>font18</font>
+						<textcolor>white</textcolor>
+						<align>center</align>
+						<label>$INFO[ListItem.Property(custom:name)]</label>
+					</control>
+				</focusedlayout>
+			</control>
+			
+		</control>
+	</controls>
+</window>

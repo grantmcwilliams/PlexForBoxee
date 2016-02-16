@@ -1,4 +1,4 @@
-#
+﻿#
 # ElementTree
 # $Id: XMLTreeBuilder.py 2305 2005-03-01 17:43:09Z fredrik $
 #

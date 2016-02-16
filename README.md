@@ -35,4 +35,3 @@ All versions can now be installed via the repository!
 4. Copy the certificate into a folder name BoxeeApps on the root of a usb stick/drive
 5. Copy the plexee folder into BoxeeApps as well
 6. Attach the usb stick/drive to the Boxee device - the plexee application should now be available under Favourites in Apps
-

@@ -1,3 +1,4 @@
+﻿import traceback
 import mc
 import os
 import sys
@@ -94,26 +95,34 @@ class PlexeeWindow(object):
 		self.window = None
 	
 	def load(self):
-		util.logDebug("On load %s started" % self.getId())
-		self.onLoad()
-		util.logDebug("On load %s ended" % self.getId())
+		util.logDebug("On load %i started" % self.getId())
+		try:
+			self.onLoad()
+			util.logDebug("On load %i ended" % self.getId())
+		except:
+			util.logError("Unexpected error while loading: %s" % sys.exc_info()[0], traceback.format_exc())
 
 	def unload(self):
-		util.logDebug("On unload %s started" % self.getId())
-		self.onUnload()
-		util.logDebug("On unload %s ended" % self.getId())
+		util.logDebug("On unload %i started" % self.getId())
+		try:
+			self.onUnload()
+			util.logDebug("On unload %i ended" % self.getId())
+		except:
+			util.logError("Unexpected error while unloading: %s" % sys.exc_info()[0], traceback.format_exc())
 
 	def activate(self):
-		self.plexee.player.stopWaiting()
-		id = self.getId()
-		util.logDebug("Activate Window %s started" % id)
-		mc.ActivateWindow(id)
-		#Initialise links to controls
-		self.window = mc.GetWindow(self.getId())
-		self.init()
-		#Do any actions on activation of window
-		self.onActivate()
-		util.logDebug("Activate Window %s ended" % id)
+		try:
+			self.plexee.player.stopWaiting()
+			util.logDebug("Activate Window %i started" % self.getId())
+			mc.ActivateWindow(self.getId())
+			#Initialise links to controls
+			self.window = mc.GetWindow(self.getId())
+			self.init()
+			#Do any actions on activation of window
+			self.onActivate()
+			util.logDebug("Activate Window %i ended" % self.getId())
+		except:
+			util.logError("Unexpected error while activating: %s" % sys.exc_info()[0], traceback.format_exc())
 
 	def onActivate(self): pass
 	def onLoad(self): pass
@@ -765,7 +774,11 @@ class PlexeeHomeWindow(PlexeeWindow):
 		self.searchList = window.GetList(710)
 		self.myQueueList = window.GetList(810)
 		self.homeGroupList = window.GetControl(Plexee.HOME_GROUPLIST_ID)
-		
+	
+	def userClicked(self):
+		#change user
+		self.plexee.getUserDialog().activate()
+
 	def playlistClicked(self):
 		self.plexee.getPlaylistWindow().activate()
 	
@@ -826,6 +839,7 @@ class PlexeeHomeWindow(PlexeeWindow):
 			server = manager.myServers[machineID]
 			data, url = server.getLibraryData()
 			windowInformation = self.plexee.getListItems(server, data, url)
+			if windowInformation is None: continue
 			for childListItem in windowInformation.childListItems: libraryListItems.append(childListItem)
 		return libraryListItems
 
@@ -843,7 +857,11 @@ class PlexeeHomeWindow(PlexeeWindow):
 			server = sharedServers[machineID]
 			data, url = server.getLibraryData()
 			windowInformation = self.plexee.getListItems(server, data, url)
-			for childListItem in windowInformation.childListItems: libraryListItems.append(childListItem)
+			if windowInformation is None: continue
+			for childListItem in windowInformation.childListItems:
+				#App shared name
+				childListItem.SetProperty('title', server.remoteTitle + ' - ' + childListItem.GetProperty('title'))
+				libraryListItems.append(childListItem)
 		return libraryListItems
 
 	def getMyChannelItems(self):
@@ -859,6 +877,7 @@ class PlexeeHomeWindow(PlexeeWindow):
 			server = myServers[machineID]
 			data, url = server.getChannelData()
 			windowInformation = self.plexee.getListItems(server, data, url)
+			if windowInformation is None: continue
 			for childListItem in windowInformation.childListItems: libraryListItems.append(childListItem)
 		return libraryListItems
 
@@ -872,6 +891,7 @@ class PlexeeHomeWindow(PlexeeWindow):
 			server = myServers[machineID]
 			data, url = server.getRecentlyAddedData()
 			windowInformation = self.plexee.getListItems(server, data, url)
+			if windowInformation is None: continue
 			for childListItem in windowInformation.childListItems: libraryListItems.append(childListItem)
 		return libraryListItems
 
@@ -885,6 +905,7 @@ class PlexeeHomeWindow(PlexeeWindow):
 			server = myServers[machineID]
 			data, url = server.getOnDeckData()
 			windowInformation = self.plexee.getListItems(server, data, url)
+			if windowInformation is None: continue
 			for childListItem in windowInformation.childListItems: libraryListItems.append(childListItem)
 		return libraryListItems
 
@@ -916,7 +937,7 @@ class PlexeeHomeWindow(PlexeeWindow):
 				searchData, searchUrl = server.getSearchData(query)
 				
 			windowInformation = self.plexee.getListItems(server, searchData, searchUrl)
-			
+			if windowInformation is None: continue
 			for childListItem in windowInformation.childListItems:
 				#Only allow known types
 				if childListItem.GetProperty('itemtype') == 'Video' or childListItem.GetProperty('itemtype') == 'Track' or childListItem.GetProperty('itemtype') == 'Directory':
@@ -924,12 +945,13 @@ class PlexeeHomeWindow(PlexeeWindow):
 					libraryListItems.append(childListItem)
 		return libraryListItems
 	
-##
-#The dialog object for the for Play Dialog screen
-#
 class PlexeePlayDialog(PlexeeDialog):
+	"""
+	The dialog object for the for Play Dialog screen
+	"""
 
-	def getId(self): return Plexee.DIALOG_PLAY_ID
+	def getId(self):
+		return Plexee.DIALOG_PLAY_ID
 
 	def __init__(self, plexee):
 		PlexeeDialog.__init__(self, plexee)
@@ -1062,10 +1084,12 @@ class PlexeeConnectionDialog(PlexeeDialog):
 			if config.isManualConnectOn():
 				host = config.getManualHost()
 				port = str(config.getManualPort())
-				plexManager.addMyServer(host, port)
-				if not plexManager.myServers:
+				server = plexManager.addMyServer(host, port)
+				if server.isTokenRequired and not config.isMyPlexConnectOn():
+					self.addConnectionError("MANUAL connection failed to connect to plex server:[CR]"+host+":"+port+"[CR][CR]It requires an authenticated user. Please connect using MyPlex.")
+				elif not plexManager.myServers:
 					#Manual set but no server found
-					self.addConnectionError("Failed to connect to plex server: "+host+":"+port+"[CR][CR]Check the server IP and port is correct.")
+					self.addConnectionError("MANUAL connection failed to connect to plex server:[CR]"+host+":"+port+"[CR][CR]Check the server IP and port is correct.")
 
 			#try GDM auto discovery
 			if config.isAutoConnectOn():
@@ -1074,7 +1098,12 @@ class PlexeeConnectionDialog(PlexeeDialog):
 				if serverList:
 					#GDM servers found
 					for serverKey in serverList:
-						plexManager.addMyServer(serverList[serverKey]['ip'], serverList[serverKey]['port'])
+						host = serverList[serverKey]['ip']
+						port = serverList[serverKey]['port']
+						server = plexManager.addMyServer(host, port)
+						if server.isTokenRequired and not config.isMyPlexConnectOn():
+							self.addConnectionError("GDM failed to connect to plex server:[CR]"+host+":"+port+"[CR][CR]It requires an authenticated user. Please connect using MyPlex.")
+
 				else:
 					#GDM enabled - but no servers found
 					self.addConnectionError("GDM - No servers found!" + \
@@ -1104,9 +1133,76 @@ class PlexeeConnectionDialog(PlexeeDialog):
 				#No errors
 				self.close()
 			
+			#Set user
+			localUser = config.getLocalUser()
+			if localUser != "":
+				localUsers = plexManager.getLocalUsers()
+				if len(localUsers) > 1:
+					for l in localUsers:
+						if l['id'] == localUser:
+							plexManager.switchUser(l['token'],l['machineidentifier'])
+			
 			self.plexee.getHomeWindow().loadContent()
 		finally:
 			mc.HideDialogWait()
+
+class PlexeeUserDialog(PlexeeDialog):
+	"""
+	The dialog object for the for User Dialog screen
+	"""
+	def getId(self): return Plexee.DIALOG_USER_ID
+	
+	def __init__(self, plexee): PlexeeDialog.__init__(self, plexee)
+	
+	def doInit(self):
+		window = self.window
+		self.contentList = window.GetList(300)
+		self.message = window.GetLabel(200)
+		self.initialised = True
+
+	def onLoad(self):
+		self.message.SetVisible(True)
+		users = self.plexee.plexManager.getLocalUsers()
+		if len(users) < 2:
+			self.message.SetLabel("There is no other user to switch to! (You can set these up on you Plex Server)")
+			self.message.SetVisible(True)
+			return
+		else:
+			self.message.SetVisible(False)
+		
+		listItems = mc.ListItems()
+		
+		for user in users:
+			util.logDebug("Adding user: %s" % user['name'])
+			li = mc.ListItem(mc.ListItem.MEDIA_UNKNOWN)
+			li.SetProperty("itemtype", "UserItem")
+			li.SetPath('1')
+			attribs = ['id','token','thumb','name','machineidentifier']
+			for attribute in attribs:
+				if user.has_key(attribute):
+					li.SetProperty(attribute.lower(), user[attribute])
+			li.SetImage(0, user['thumb'])
+			listItems.append(li)
+			
+		self.contentList.SetItems(listItems)
+		
+	def onUnload(self):
+		pass
+
+	def userClicked(self):
+		clickedItem = mc.GetFocusedItem(self.getId(), 300)
+		util.logDebug("Name: %s" % clickedItem.GetProperty('name'))
+		machineID = clickedItem.GetProperty("machineidentifier")
+		self.plexee.plexManager.switchUser(clickedItem.GetProperty("token"), machineID)
+		
+		#TODO: change to a field that indicates prime user
+		if machineID != '0':
+			self.plexee.config.setLocalUser(clickedItem.GetProperty("id"))
+		else:
+			self.plexee.config.setLocalUser("")
+		
+		self.close()
+		self.plexee.getHomeWindow().refresh()
 
 ##
 #The dialog object for the for Settings Dialog screen
@@ -1286,8 +1382,51 @@ class PlexeeSettingsDialog(PlexeeDialog):
 #The dialog object for the for Settings Dialog screen
 #
 class PlexeeConfig(object):
+	
+	@staticmethod
+	def getUserSettingsFile():
+		return os.path.join(PlexeeConfig.getUserSettingsFilepath(), 'registry.xml')
+
+	@staticmethod
+	def getUserSettingsFilepath():
+		profilePath = xbmc.translatePath("special://profile")
+		return os.path.join(profilePath, 'apps', mc.GetApp().GetId())
+
 	def __init__(self):
-		self.config = mc.GetApp().GetLocalConfig()
+		#Ok check config file is useable - this seems to be a common issue for some
+		settingsFile = PlexeeConfig.getUserSettingsFile()
+		altSettingsFile = os.path.join(os.getcwd(), 'registry.xml')
+
+		self.config = None
+
+		if util.fileExists(altSettingsFile):
+			#We've been through this all before... Just run with the alternate file
+			util.logInfo("Using alternate settings file %s" % altSettingsFile)
+			self.config = util.Config(altSettingsFile)
+			if not self.config.isValid(): self.config = None
+
+		if self.config is None:
+			testConfig = util.Config(settingsFile)
+			boxeeConfig = mc.GetApp().GetLocalConfig()
+			boxeeConfig.SetValue('test','1')
+			#Reload file
+			testConfig = util.Config(settingsFile)
+			
+			if testConfig.isValid() and '1' == testConfig.GetValue('test'):
+				#Boxee settings looks fine
+				util.logInfo("The boxee settings file appears to be ok and will be used")
+				self.config = boxeeConfig
+			else:
+				#The default settings file is not usable
+				util.logError("The settings file is not working, check file exists and permissions are ok for [%s]" % settingsFile)
+				util.logInfo("Creating/Using alternate settings file [%s]" % altSettingsFile)
+				self.config = util.Config(altSettingsFile)
+				if not self.config.isValid():
+					util.logError("The Boxee settings file looks like it may not be working, the alternate settings file failed. Running with the Boxee settings file")
+					mc.ShowDialogNotification("It looks like there was a problem with saving your user settings.\n\nPlexee will run but your settings may not be saved.")
+					#Favour Boxee's config handler incase it is actually working
+					self.config = mc.GetApp().GetLocalConfig()
+
 	def _isFlagSet(self, name, default=False):
 		val = self.config.GetValue(name)
 		if val == "" and default:
@@ -1336,6 +1475,9 @@ class PlexeeConfig(object):
 	def isPlayingThemeOn(self): return self._isFlagSet("playingtheme")
 	def setPlayingThemeOn(self): self._setFlag("playingtheme", True)
 	def setPlayingThemeOff(self): self._setFlag("playingtheme", False)
+	
+	def getLocalUser(self) : return self.config.GetValue("localuser");
+	def setLocalUser(self, val) : self.config.SetValue("localuser", val);
 
 	""" Connection Settings """
 	def isAutoConnectOn(self): return self._isFlagSet("usediscover")
@@ -1403,7 +1545,7 @@ class PlexeePlayer(object):
 			return
 		
 		#If the player is already playing - and it's not another theme then don't play
-		if mc.GetPlayer().IsPlaying() and not self.isPlayingTheme():
+		if mc.GetPlayer().IsPlaying() and not self.isPlayingTheme:
 			return
 			
 		url = ""
@@ -1551,6 +1693,7 @@ class Plexee(object):
 	DIALOG_EXIT_ID = 14010
 	DIALOG_SETTINGS_ID = 15000
 	DIALOG_PLAY_ID = 15001
+	DIALOG_USER_ID = 15004
 	
 	DIRECTORY_TITLE_ID = 100
 	DIRECTORY_SECONDARY_ID = 200
@@ -1577,7 +1720,20 @@ class Plexee(object):
 	DISPLAY_AS_CONTENT = ["artist","album","photo","season","artist_search","person_search","albums"]
 	
 	def __init__(self):
-		self.plexManager = plex.PlexManager()
+		try:
+			deviceId = mc.GetDeviceId()
+		except:
+			deviceId = str(uuid.getnode())
+
+		self.plexManager = plex.PlexManager({
+			'platform':'Boxee',
+			'platformversion':'System.BuildVersion',
+			'provides':'player',
+			'product':'Plexee',
+			'version':'1.0',
+			'device':'Windows',
+			'deviceid':deviceId
+		})
 		self.config = PlexeeConfig()
 		self._windows = dict()
 		self.player = PlexeePlayer(self)
@@ -1588,6 +1744,7 @@ class Plexee(object):
 		self._windows[Plexee.WINDOW_PLAYLIST_ID] = PlexeePlaylistWindow(self)
 		self._windows[Plexee.DIALOG_SETTINGS_ID] = PlexeeSettingsDialog(self)
 		self._windows[Plexee.DIALOG_CONNECT_ID] = PlexeeConnectionDialog(self)
+		self._windows[Plexee.DIALOG_USER_ID] = PlexeeUserDialog(self)
 		self._windows[Plexee.DIALOG_PLAY_ID] = PlexeePlayDialog(self)
 		self._windows[Plexee.DIALOG_PHOTO_ID] = PlexeePhotoDialog(self)
 		
@@ -1598,6 +1755,7 @@ class Plexee(object):
 	def getPlaylistWindow(self): return self._windows[Plexee.WINDOW_PLAYLIST_ID]
 	def getSettingsDialog(self): return self._windows[Plexee.DIALOG_SETTINGS_ID]
 	def getConnectionDialog(self): return self._windows[Plexee.DIALOG_CONNECT_ID]
+	def getUserDialog(self): return self._windows[Plexee.DIALOG_USER_ID]
 	def getPlayDialog(self): return self._windows[Plexee.DIALOG_PLAY_ID]
 	def getPhotoDialog(self): return self._windows[Plexee.DIALOG_PHOTO_ID]
 
@@ -1891,7 +2049,6 @@ class Plexee(object):
 		#Set title item art/thumb to display if needed
 		titleListItem.SetProperty("art", tree.attrib.get("art",""))
 		titleListItem.SetProperty("thumb", tree.attrib.get("thumb",""))
-		dataHash = util.hash(data)
 		titleListItem.SetProperty("hash", dataHash)
 		
 		childListItems = mc.ListItems()
@@ -2093,6 +2250,36 @@ class Plexee(object):
 			
 		return MediaOptions(mediaItems, subtitleItems, audioItems);
 	
+	def getMultiUserItems(self, machineID):
+		"""
+		Create user items from MyPlex
+		"""
+		data = self._myplex().getMultiUserData()
+		if not data:
+			return mc.ListItems()
+		tree = ElementTree.fromstring(data)
+		childListItems = mc.ListItems()
+		for child in tree:
+			#Check servers
+			found = False
+			for server in child.findall("Server"):
+				if server.attrib["machineIdentifier"] == machineID:
+					found = True
+					break
+			if not found:
+				continue
+			listItem = mc.ListItem(mc.ListItem.MEDIA_UNKNOWN)
+			listItem.SetProperty("itemtype", "UserItem")
+			listItem.SetPath('1')
+			#id="8056244" title="Kids" thumb="https://plex.tv/users/2194dc57a32e2b6d/avatar"
+			attribs = ['id','title','thumb']
+			for attribute in attribs:
+				if child.attrib.has_key(attribute):
+					#util.logDebug('Property [%s]=[%s]' % (attribute.lower(), util.cleanString(element.attrib[attribute])))
+					listItem.SetProperty(attribute.lower(), util.cleanString(child.attrib[attribute]))
+			childListItems.append(listItem)
+		return childListItems        
+
 	def monitorPlayback(self, args):
 		"""
 		Update the played progress every 5 seconds while the player is playing
@@ -2423,9 +2610,9 @@ class Plexee(object):
 			self.player.playMusicItems(items)
 
 	def activateWindow(self, id):
-		util.logDebug("Activate window %s started" % id)
+		util.logDebug("Activate window %i started" % id)
 		mc.ActivateWindow(id)
-		util.logDebug("Activate window %s ended" % id)
+		util.logDebug("Activate window %i ended" % id)
 		return mc.GetWindow(id)
 
 	def _handlePhotoItem(self, listItem):
