@@ -138,21 +138,25 @@ class Http(object):
 		return self.code
 
 	def Get(self, url):
+		logDebug('GET %s' % url)
 		request = urllib2.Request(url)
 		for p in self.headers:
 			request.add_header(p, self.headers[p])
 		try:
 			resp = self.opener.open(request)
 			self.code = resp.code
+			logDebug('RESPONSE %s' % str(self.code))
 			return resp.read()
 		except urllib2.HTTPError, e:
 			self.code = e.code
+			logDebug('RESPONSE %s' % str(self.code))
 			if e.code == 201:
 				return e.read()
 			return None
 		except urllib2.URLError:
 			#Failed to access
 			self.code = -1
+			logDebug('RESPONSE %s' % str(self.code))
 			return None
 
 	def Reset(self):
@@ -160,6 +164,7 @@ class Http(object):
 		self.headers.clear()
 
 	def Post(self, url, data):
+		logDebug('POST %s' % url)
 		request = urllib2.Request(url, data)
 		for p in self.headers:
 			request.add_header(p, self.headers[p])
@@ -167,9 +172,11 @@ class Http(object):
 		try:
 			resp = self.opener.open(request)
 			self.code = resp.code
+			logDebug('RESPONSE %s' % str(self.code))
 			return resp.read()
 		except urllib2.HTTPError, e:
 			self.code = e.code
+			logDebug('RESPONSE %s' % str(self.code))
 			if e.code == 201:
 				return e.read()
 			return None
