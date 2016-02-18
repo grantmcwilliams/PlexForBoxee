@@ -2,6 +2,7 @@
 import xbmc
 import os
 from elementtree import ElementTree
+import util
 
 def fileExists(f): return os.access(f, os.F_OK)
 
@@ -25,7 +26,7 @@ class Config:
 			self.__isvalid = True
 		except IOError:
 			#Error creating file.... permissions problem?
-			logError("Failed to create settings file at %s" % filepath)
+			util.logError("Failed to create settings file at %s" % filepath)
 
 	def isValid(self): return self.__isvalid
 	
@@ -115,9 +116,12 @@ def GetDeviceId(): return "123"
 
 def GetApp(): return _app
 
-def LogInfo(msg): print('LogInfo: %s' % msg)
-def LogError(msg): print('LogError: %s' % msg)
-def LogDebug(msg): print('LogDebug: %s' % msg)
+def __getCurrentDateTime():
+	return time.strftime("%d/%m/%Y %H:%M:%S")
+
+def LogInfo(msg): print(__getCurrentDateTime() + ' LogInfo: %s' % msg)
+def LogError(msg): print(__getCurrentDateTime() + ' LogError: %s' % msg)
+def LogDebug(msg): print(__getCurrentDateTime() + ' LogDebug: %s' % msg)
 
 _app = App()
 _config = Config(os.path.join(xbmc.translatePath('special://profile'),'apps',GetApp().GetId(),'registry.xml'))

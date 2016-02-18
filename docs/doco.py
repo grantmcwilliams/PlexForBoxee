@@ -1,14 +1,45 @@
-##
+﻿##
 #\mainpage Plexee Development Notes
 #
 #\section intro_sec Introduction
 #
 #These notes are intended to help developers understand and work on the Plexee Boxee application.
+#* \subpage start "Getting Started"
 #* \subpage boxee_dev "Developer References for developing Boxee apps"
 #* \subpage design "Design Overview"
 #* \subpage coding "Coding Guidelines"
 #* \subpage testing "Testing Guidelines"
 #* \subpage doco "Documentation Generation"
+#
+#\page start Getting Started
+#
+# Here are some recommended steps.
+#
+# -# Step 1. Get a development version running.
+# -# Step 2. Get your development environment up and running.
+# -# Step 3. Get the unit tests running.
+#
+#\section Install development version on Boxee
+#
+# -# Add the test-app settings back into the descriptor.xml file<br>
+#	 <code>
+#    <test-app>true</test-app>
+#    </code>
+#<br><br>
+# -# You need to follow the steps at the url below - provides a developer key:<br>
+#    http://bbx.boxee.tv/developer
+#<br><br>
+# -# I copy both the plexee.pleforboxee folder and the developer key file onto an SD card under /BoxeeApps
+#<br><br>
+# -# Remove the current installed Plexee
+#    You may be able to do it from the Plex GUI
+#    I do it manually<br>
+#    <code>
+#    rm -rf /data/.boxee/UserData/apps/plexee.plexforboxee<br>
+#    rm -rf /data/.boxee/UserData/profiles/xxxx/apps/plexee.plexforboxee
+#    </code><br>
+#    Where xxxx = your boxee username<br>
+#
 #
 #\page boxee_dev Boxee Developer References
 #Alas the original pages are no more - but here's a copy from the web archive.<br>

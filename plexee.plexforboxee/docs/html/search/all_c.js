@@ -12,7 +12,7 @@ var searchData=
   ['loadinglabel',['loadingLabel',['../classplexee_1_1_plexee_photo_dialog.html#a813127fcb76f91cf7a72293acfc09991',1,'plexee::PlexeePhotoDialog']]],
   ['loadphotosettings',['loadPhotoSettings',['../classplexee_1_1_plexee_settings_dialog.html#a83eae4c94dff6384dcd2dc4066454868',1,'plexee::PlexeeSettingsDialog']]],
   ['logdebug',['logDebug',['../namespaceutil.html#aad4337c1a8fed9b2d5ef6d81e1d7c770',1,'util']]],
-  ['logerror',['logError',['../namespaceutil.html#a5600a79f757b616a21cc3290a9e7b49b',1,'util']]],
+  ['logerror',['logError',['../namespaceutil.html#adda40735d71822edd7ea0018b1c170b9',1,'util']]],
   ['login',['login',['../classplex_1_1_my_plex_service.html#a73d1e6950182760b889f848d49bdf169',1,'plex::MyPlexService']]],
   ['loginfo',['logInfo',['../namespaceutil.html#a2f0b916aae3cc79c45d6afc8a39f5748',1,'util']]]
 ];
