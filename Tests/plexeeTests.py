@@ -5,6 +5,7 @@ import plexee
 import xbmc
 import os
 from plex import PlexManager
+import time
 
 class plexeeTests(unittest.TestCase):
 	"""Tests Plexee functions"""
@@ -46,9 +47,13 @@ class plexeeTests(unittest.TestCase):
 		xbmc.setMockProfilePath(filepath)
 		config = plexee.PlexeeConfig()
 		config.setManualHost('xxx')
+		config.setManualHost('yyy')
+		config.setManualPort('32400')
 		config1 = plexee.PlexeeConfig()
-		self.assertEqual('xxx',config1.getManualHost(), 'Use mock Boxee config - Test config reads and writes correctly')
+		self.assertEqual('yyy',config1.getManualHost(), 'Use mock Boxee config - Test config reads and writes correctly')
+
 		os.remove(fullfilename)
+		time.sleep(2)
 		os.rmdir(filepath)
 		util.logInfo('#1. END - Boxee settings file is good')
 
@@ -56,15 +61,16 @@ class plexeeTests(unittest.TestCase):
 		util.logInfo('#2. Mock Boxee file not accessible')
 		xbmc.setMockProfilePath('.')
 		config = plexee.PlexeeConfig()
-		config.setManualHost('xxx')
+		config.setManualHost('zzz')
+		config.setDebugOn()
 		config1 = plexee.PlexeeConfig()
-		self.assertEqual('xxx',config1.getManualHost(), 'Use alternate config - Test config reads and writes correctly')
+		self.assertEqual('zzz',config1.getManualHost(), 'Use alternate config - Test config reads and writes correctly')
 		util.logInfo('#2. END - Mock Boxee file not accessible')
 
 		#3. Mock Boxee file not accessible, get file again
 		util.logInfo('#3. Mock Boxee file not accessible, get file again')
 		config = plexee.PlexeeConfig()
-		self.assertEqual('xxx',config.getManualHost(), 'Alternate config used again')
+		self.assertEqual('zzz',config.getManualHost(), 'Alternate config used again')
 		util.logInfo('#3. END - Mock Boxee file not accessible, get file again')
 
 

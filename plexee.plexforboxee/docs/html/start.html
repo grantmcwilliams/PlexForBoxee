@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.11"/>
-<title>Plexee: Member List</title>
+<title>Plexee: Getting Started</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -41,9 +41,9 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
   <div id="navrow1" class="tabs">
     <ul class="tablist">
       <li><a href="index.html"><span>Main&#160;Page</span></a></li>
-      <li><a href="pages.html"><span>Related&#160;Pages</span></a></li>
+      <li class="current"><a href="pages.html"><span>Related&#160;Pages</span></a></li>
       <li><a href="namespaces.html"><span>Namespaces</span></a></li>
-      <li class="current"><a href="annotated.html"><span>Classes</span></a></li>
+      <li><a href="annotated.html"><span>Classes</span></a></li>
       <li><a href="files.html"><span>Files</span></a></li>
       <li>
         <div id="MSearchBox" class="MSearchBoxInactive">
@@ -63,14 +63,6 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
       </li>
     </ul>
   </div>
-  <div id="navrow2" class="tabs2">
-    <ul class="tablist">
-      <li><a href="annotated.html"><span>Class&#160;List</span></a></li>
-      <li><a href="classes.html"><span>Class&#160;Index</span></a></li>
-      <li><a href="hierarchy.html"><span>Class&#160;Hierarchy</span></a></li>
-      <li><a href="functions.html"><span>Class&#160;Members</span></a></li>
-    </ul>
-  </div>
 <!-- window showing the filter options -->
 <div id="MSearchSelectWindow"
      onmouseover="return searchBox.OnSearchSelectShow()"
@@ -87,22 +79,35 @@ var searchBox = new SearchBox("searchBox", "search",false,'Search');
 
 <div id="nav-path" class="navpath">
   <ul>
-<li class="navelem"><a class="el" href="namespaceutil.html">util</a></li><li class="navelem"><a class="el" href="classutil_1_1_constants.html">Constants</a></li>  </ul>
+<li class="navelem"><a class="el" href="index.html">Plexee Development Notes</a></li>  </ul>
 </div>
 </div><!-- top -->
 <div class="header">
   <div class="headertitle">
-<div class="title">util.Constants Member List</div>  </div>
+<div class="title">Getting Started </div>  </div>
 </div><!--header-->
 <div class="contents">
-
-<p>This is the complete list of members for <a class="el" href="classutil_1_1_constants.html">util.Constants</a>, including all inherited members.</p>
-<table class="directory">
-  <tr class="even"><td class="entry"><a class="el" href="classutil_1_1_constants.html#a31ba9cfdf4dbe1be13fcbc4427ae5eb0">IS_DEBUG</a></td><td class="entry"><a class="el" href="classutil_1_1_constants.html">util.Constants</a></td><td class="entry"><span class="mlabel">static</span></td></tr>
-</table></div><!-- contents -->
+<div class="textblock"><ol type="1">
+<li>Add the test-app settings back into the descriptor.xml file<br />
+ <code> &lt;test-app&gt;true&lt;/test-app&gt; </code> <br />
+<br />
+</li>
+<li>You need to follow the steps at the url below - provides a developer key:<br />
+ <a href="http://bbx.boxee.tv/developer">http://bbx.boxee.tv/developer</a> <br />
+<br />
+</li>
+<li>I copy both the plexee.pleforboxee folder and the developer key file onto an SD card under /BoxeeApps <br />
+<br />
+</li>
+<li>Remove the current installed Plexee You may be able to do it from the Plex GUI I do it manually<br />
+ <code> rm -rf /data/.boxee/UserData/apps/plexee.plexforboxee<br />
+ rm -rf /data/.boxee/UserData/profiles/xxxx/apps/plexee.plexforboxee </code> Where xxxx = your boxee username<br />
+ </li>
+</ol>
+</div></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Wed Feb 17 2016 08:20:32 for Plexee by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Wed Feb 17 2016 08:20:31 for Plexee by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.11
 </small></address>

@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['plexee_20development_20notes',['Plexee Development Notes',['../index.html',1,'']]]
+  ['getting_20started',['Getting Started',['../start.html',1,'index']]]
 ];

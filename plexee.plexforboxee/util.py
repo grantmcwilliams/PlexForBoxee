@@ -209,8 +209,10 @@ class Config:
 			self.__lastModified = mt
 		for child in self.__tree.getroot():
 			if child.attrib['id'] == key:
-				return child.text
-		return None
+				result = child.text
+				if result is None: return ''
+				else: return result
+		return ''
 
 	def SetValue(self, key, value):
 		#Update value in file
@@ -219,6 +221,7 @@ class Config:
 		for child in root:
 			if child.attrib['id'] == key:
 				child.text = value
+				found = True
 				break
 		if not found:
 			e = ElementTree.Element('value', {'id':key})

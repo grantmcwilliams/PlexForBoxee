@@ -5,6 +5,7 @@ import mc
 from plex import PlexServer, MyPlexService, PlexManager
 from plexee import PlexeeConfig
 import util
+import time
 
 class plexTests(unittest.TestCase):
 	"""Tests the Plex python interface"""
@@ -38,6 +39,9 @@ class plexTests(unittest.TestCase):
 
 	#Encrypted try ip and bypass certificate?
 
+	def getCurrentDateTime(self):
+		return time.strftime("%d/%m/%Y %H:%M:%S")
+
 	def testDirectConnection(self):
 		"""Test connect"""
 		#self.setup()
@@ -62,6 +66,7 @@ class plexTests(unittest.TestCase):
 
 	def testMyPlexConnection(self):
 		self.setup()
+		print(self.getCurrentDateTime() + "1. Create PlexManager")
 		plexManager = PlexManager({
 			'platform':'Boxee',
 			'platformversion':'System.BuildVersion',
@@ -71,16 +76,24 @@ class plexTests(unittest.TestCase):
 			'device':'Windows',
 			'deviceid':'xxx'
 		})
+		print(self.getCurrentDateTime() + "1. END PlexManager")
+
+		print(self.getCurrentDateTime() + "2. Do Plex Login")
 		plexManager.clearMyPlex()
 		self.assertEqual(plexManager.myPlexLogin(constants.USERNAME, constants.PASSWORD), 0, 'Login succeeded')
 		token = plexManager.myplex.authenticationToken
 		print('TOKEN: %s' % token)
 		assert token is not None
+		print(self.getCurrentDateTime() + "2. END Plex Login")
 
+		print(self.getCurrentDateTime() + "3. Connect to server")
 		server = PlexServer(constants.HOST, constants.PORT, token)
+		print(self.getCurrentDateTime() + "3. END Connect to server")
+		print(self.getCurrentDateTime() + "4. Get data")
 		data, url = server.getLibraryData()
 		print(data)
 		assert data is not None
+		print(self.getCurrentDateTime() + "4. END Get data")
 
 
 

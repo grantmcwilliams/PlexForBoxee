@@ -346,52 +346,54 @@ class MyPlexService(object):
 			url = MyPlexService.SERVERS_URL % self.authenticationToken
 			util.logDebug("Finding servers via: "+url)
 			data = util.Http().Get(url)
-			if data:
-				tree = ElementTree.fromstring(data)
-				for child in tree:
-					host = child.attrib.get("address", "")
-					port = child.attrib.get("port", "")
-					localAddresses = child.attrib.get("localAddresses", "")
-					accessToken = child.attrib.get("accessToken", "")
-					machineIdentifier = child.attrib.get("machineIdentifier", "")
-					local = child.attrib.get("owned", "0")
-					sourceTitle = child.attrib.get("sourceTitle", "")
+			if not data:
+				return localServers, remoteServers, foundServer
 
-					util.logInfo("MyPlex found server %s:%s" % (host,port))
-					foundServer = True
-					server = None
-					if local == "1":
-						#Try the local addresses
-						#TODO: Similiar code exists in the server and this is a bit convoluted....
-						if localAddresses:
-							localAddresses = localAddresses.split(',')
-							util.logInfo("--> Resolving local addresses")
-							resolved = False
-							for addr in localAddresses:
-								http = util.Http()
-								util.logDebug("--> Trying local address %s:32400" % addr)
-								data = http.Get("http://"+addr+":32400/?X-Plex-Token="+accessToken)
-								if http.GetHttpResponseCode() == -1:
-									data = http.Get("https://"+addr+":32400/?X-Plex-Token="+accessToken)
-								if data:
-									tree = ElementTree.fromstring(data)
-									localMachineIdentifier = tree.attrib.get("machineIdentifier", "")
-									if localMachineIdentifier == machineIdentifier:
-										util.logInfo("--> Using local address %s:32400 instead of remote address" % addr)
-										server = PlexServer(addr, "32400", accessToken)
-										resolved = True
-										break
-							if not resolved:
-								util.logInfo("--> Using remote address %s unable to resolve local address" % host)
-								server = PlexServer(host, port, accessToken)
+			tree = ElementTree.fromstring(data)
+			for child in tree:
+				host = child.attrib.get("address", "")
+				port = child.attrib.get("port", "")
+				localAddresses = child.attrib.get("localAddresses", "")
+				accessToken = child.attrib.get("accessToken", "")
+				machineIdentifier = child.attrib.get("machineIdentifier", "")
+				local = child.attrib.get("owned", "0")
+				sourceTitle = child.attrib.get("sourceTitle", "")
 
-						if server is None or not server.isValid():
-							continue
-						localServers[machineIdentifier] = server
-					else:
-						#Remote server found
-						server = PlexServer(host, port, accessToken, sourceTitle)
-						remoteServers[machineIdentifier] = server
+				util.logInfo("MyPlex found server %s:%s" % (host,port))
+				foundServer = True
+				server = None
+				if local == "1":
+					#Try the local addresses
+					#TODO: Similiar code exists in the server and this is a bit convoluted....
+					if localAddresses:
+						localAddresses = localAddresses.split(',')
+						util.logInfo("--> Resolving local addresses")
+						resolved = False
+						for addr in localAddresses:
+							http = util.Http()
+							util.logDebug("--> Trying local address %s:32400" % addr)
+							data = http.Get("http://"+addr+":32400/?X-Plex-Token="+accessToken)
+							if http.GetHttpResponseCode() == -1:
+								data = http.Get("https://"+addr+":32400/?X-Plex-Token="+accessToken)
+							if data:
+								tree = ElementTree.fromstring(data)
+								localMachineIdentifier = tree.attrib.get("machineIdentifier", "")
+								if localMachineIdentifier == machineIdentifier:
+									util.logInfo("--> Using local address %s:32400 instead of remote address" % addr)
+									server = PlexServer(addr, "32400", accessToken)
+									resolved = True
+									break
+						if not resolved:
+							util.logInfo("--> Using remote address %s unable to resolve local address" % host)
+							server = PlexServer(host, port, accessToken)
+
+					if server is None or not server.isValid():
+						continue
+					localServers[machineIdentifier] = server
+				else:
+					#Remote server found
+					server = PlexServer(host, port, accessToken, sourceTitle)
+					remoteServers[machineIdentifier] = server
 		
 		return localServers, remoteServers, foundServer
 
