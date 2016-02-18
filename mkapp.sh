@@ -62,19 +62,22 @@ if [[ -d ./app-files ]] ;then
 		echo "Unable to upload plexee.plexforboxee-${APPVERSION}.zip and signature to ${APPREPO} - exiting"
 		exit 1
 	fi
-	if ! ssh root@${APPREPO} "chmod 777 ${APPPATH}/download ; restorecon ${APPPATH}/download" ;then
-		echo "Unable to change permissions on ${APPPATH}/download"
-	fi
-	if scp root@${APPREPO}:${APPPATH}/index.xml ${TMPDIR}/index.xml ; then 
-		sed -i "s/<version>[0-9]\.[0-9][0-9]?<\/version>/<version>${APPVERSION}<\/version>/g" ${TMPDIR}/index.xml 
-		sed -i "s/(v. [0-9]\.[0-9][0-9]?)/(v. ${APPVERSION})/g" ${TMPDIR}/index.xml 
-	else
-		echo "Unable to download ${APPPATH}/index.xml -exiting"
-		exit 1
-	fi	
-	if ! scp ${TMPDIR}/index.xml ${APPPATH}/download/plexee.plexforboxee-latest.zip "root@${APPREPO}:${APPPATH}/" ; then 
+	if ! scp ./index.xml "root@${APPREPO}:${APPPATH}/" ; then 
 		echo "Unable to upload new repository index - exiting"
 		exit 1
 	fi
-	rm -Rf ${TMPDIR}	 
+
+	if ! ssh root@${APPREPO} "cd ${APPPATH}/download/; unlink plexee.plexforboxee-latest.zip; ln -s plexee.plexforboxee-${APPVERSION}.zip plexee.plexforboxee-latest.zip; chown -R apache.apache ${APPPATH}/; chmod -R 755 ${APPPATH}/; restorecon ${APPPATH}/" ;then
+		echo "Unable to change permissions on ${APPPATH}"
+	fi
+
+	if [[ ! -e ./index.xml ]] ;then
+		if scp root@${APPREPO}:${APPPATH}/index.xml ./index.xml ; then 
+	else
+		echo "Unable to download ${APPPATH}/index.xml -exiting"
+		exit 1
+	fi
+	
+	sed -i "s/<version>[0-9]\.[0-9][0-9]?<\/version>/<version>${APPVERSION}<\/version>/g" ./index.xml 
+	sed -i "s/(v. [0-9]\.[0-9][0-9]?)/(v. ${APPVERSION})/g" ./index.xml 
 fi
