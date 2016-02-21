@@ -114,8 +114,8 @@ Inheritance diagram for plex.PlexServer:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a2974aaaa2bb2a93c034fb77704a859b2"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classplex_1_1_plex_server.html#a2974aaaa2bb2a93c034fb77704a859b2">__init__</a> (self, <a class="el" href="classplex_1_1_plex_server.html#ac0a76e3ecf068a0f7e37813e4c239fd8">host</a>, <a class="el" href="classplex_1_1_plex_server.html#ad16689962aae67042783441e81952dbd">port</a>, <a class="el" href="classplex_1_1_plex_server.html#a13fb643bd7d0838cf12d29129eaf4575">accessToken</a>=None)</td></tr>
-<tr class="separator:a2974aaaa2bb2a93c034fb77704a859b2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae7751bc9b29f3402dfaa950c5ce8f7e1"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classplex_1_1_plex_server.html#ae7751bc9b29f3402dfaa950c5ce8f7e1">__init__</a> (self, <a class="el" href="classplex_1_1_plex_server.html#ac0a76e3ecf068a0f7e37813e4c239fd8">host</a>, <a class="el" href="classplex_1_1_plex_server.html#ad16689962aae67042783441e81952dbd">port</a>, <a class="el" href="classplex_1_1_plex_server.html#a13fb643bd7d0838cf12d29129eaf4575">accessToken</a>=None, <a class="el" href="classplex_1_1_plex_server.html#aecf1788bfaef824abe00640dbbd2fce5">remoteTitle</a>=None)</td></tr>
+<tr class="separator:ae7751bc9b29f3402dfaa950c5ce8f7e1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac9e7d29a6401fa98e2db8e32d1780b23"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classplex_1_1_plex_server.html#ac9e7d29a6401fa98e2db8e32d1780b23">getCurrentAccessToken</a> (self)</td></tr>
 <tr class="separator:ac9e7d29a6401fa98e2db8e32d1780b23"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7a6c8dc1e6bc70a7c8f08a609302530f"><td class="memItemLeft" align="right" valign="top">def&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classplex_1_1_plex_server.html#a7a6c8dc1e6bc70a7c8f08a609302530f">isValid</a> (self)</td></tr>
@@ -187,6 +187,8 @@ Public Attributes</h2></td></tr>
 <tr class="separator:a9c8822427bdbd58a376ee014bf64ecdb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0c2773c41851710b05637401e73f50b2"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classplex_1_1_plex_server.html#a0c2773c41851710b05637401e73f50b2">isLocal</a></td></tr>
 <tr class="separator:a0c2773c41851710b05637401e73f50b2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aecf1788bfaef824abe00640dbbd2fce5"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classplex_1_1_plex_server.html#aecf1788bfaef824abe00640dbbd2fce5">remoteTitle</a></td></tr>
+<tr class="separator:aecf1788bfaef824abe00640dbbd2fce5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af15a5e1fe26311182d72877dc828549f"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classplex_1_1_plex_server.html#af15a5e1fe26311182d72877dc828549f">isMultiuser</a></td></tr>
 <tr class="separator:af15a5e1fe26311182d72877dc828549f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8dbc011bdc973a899101c106fd0ab112"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classplex_1_1_plex_server.html#a8dbc011bdc973a899101c106fd0ab112">friendlyName</a></td></tr>
@@ -245,7 +247,7 @@ Static Public Attributes</h2></td></tr>
 <div class="textblock"><p>Encapsulates a Plex server (local or remote) </p>
 <pre class="fragment">Encapsulates a Plex server (local or remote)
 </pre> </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
-<a class="anchor" id="a2974aaaa2bb2a93c034fb77704a859b2"></a>
+<a class="anchor" id="ae7751bc9b29f3402dfaa950c5ce8f7e1"></a>
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
@@ -271,7 +273,13 @@ Static Public Attributes</h2></td></tr>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">&#160;</td>
-          <td class="paramname"><em>accessToken</em> = <code>None</code>&#160;</td>
+          <td class="paramname"><em>accessToken</em> = <code>None</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">&#160;</td>
+          <td class="paramname"><em>remoteTitle</em> = <code>None</code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -1378,6 +1386,18 @@ Removes from deck
 
 </div>
 </div>
+<a class="anchor" id="aecf1788bfaef824abe00640dbbd2fce5"></a>
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">plex.PlexServer.remoteTitle</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a class="anchor" id="adb4b57bf94ad59e566a4d3339fa036cd"></a>
 <div class="memitem">
 <div class="memproto">
@@ -1584,7 +1604,7 @@ Removes from deck
 </div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
-Generated on Sun Feb 14 2016 01:29:52 for Plexee by &#160;<a href="http://www.doxygen.org/index.html">
+Generated on Wed Feb 17 2016 08:20:31 for Plexee by &#160;<a href="http://www.doxygen.org/index.html">
 <img class="footer" src="doxygen.png" alt="doxygen"/>
 </a> 1.8.11
 </small></address>

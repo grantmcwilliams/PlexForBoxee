@@ -101,5 +101,6 @@ var searchData=
   ['getwindow',['getWindow',['../classplexee_1_1_plexee.html#afa673f2b4d0fbedae60f8756df7f55b6',1,'plexee::Plexee']]],
   ['getxmlattributelist',['getXmlAttributeList',['../classplexee_1_1_plexee.html#acd2da7eb1c591fcefc864f3a33c0b90a',1,'plexee::Plexee']]],
   ['getxpos',['getXPos',['../search_8js.html#a76d24aea0009f892f8ccc31d941c0a2b',1,'search.js']]],
-  ['getypos',['getYPos',['../search_8js.html#a8d7b405228661d7b6216b6925d2b8a69',1,'search.js']]]
+  ['getypos',['getYPos',['../search_8js.html#a8d7b405228661d7b6216b6925d2b8a69',1,'search.js']]],
+  ['getting_20started',['Getting Started',['../start.html',1,'index']]]
 ];
