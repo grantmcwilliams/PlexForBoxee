@@ -3,7 +3,7 @@ PlexForBoxee
 
 PlexForBoxee is a Plex Media Server application for Boxeee software. PlexForBoxee runs on both the dlink Boxeebox and standalone Boxee Software for Pc.
 
-maintainers
+Maintainers
 -----------
 - Originally created by Mike McMullin (xmcnuggetx)  
 - Grant McWilliams (grantmcwilliams)
