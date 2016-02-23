@@ -18,10 +18,12 @@ TODO
 * Add playing videos from Queue (in latest release for testing now)
 * Get Video Channels to work (in latest release for testing now)
 
-Install Instructions
---------------------
-See the wiki for installation instructions - https://github.com/grantmcwilliams/PlexForBoxee/wiki/Installation
-
 Documentation
 -------------
-Wiki - https://github.com/grantmcwilliams/PlexForBoxee/wiki
+##### Wiki
+All Documentation - https://github.com/grantmcwilliams/PlexForBoxee/wiki
+
+#### Install Instructions
+Installation instructions - https://github.com/grantmcwilliams/PlexForBoxee/wiki/Installation
+
+
