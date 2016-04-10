@@ -1,4 +1,4 @@
-﻿HOST='10.1.3.200'
+﻿HOST='10.1.3.201'
 PORT='32400'
-USERNAME='yyyyy'
-PASSWORD='xxxxx'
+USERNAME='userid'
+PASSWORD='password'

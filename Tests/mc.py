@@ -125,3 +125,35 @@ def LogDebug(msg): print(__getCurrentDateTime() + ' LogDebug: %s' % msg)
 
 _app = App()
 _config = Config(os.path.join(xbmc.translatePath('special://profile'),'apps',GetApp().GetId(),'registry.xml'))
+
+def ListItems(): return []
+
+class ListItem(object):
+	MEDIA_UNKNOWN = 0
+	MEDIA_AUDIO_MUSIC = 1
+	MEDIA_VIDEO_CLIP = 2
+	def __init__(self, type = 0):
+		self.title = ''
+		self.path = ''
+		self.contentType = ''
+		self.props = dict()
+
+	def SetTitle(self, val): self.title = val
+	def GetTitle(self): return self.title
+	def SetPath(self, val): self.path = val
+	def GetPath(self): return self.path
+	def SetContentType(self, val): self.contentType = val
+	def GetContentType(self): return self.contenType
+	def SetImage(self, indx, path): pass
+	def GetImage(self, indx): return ''
+	def SetProperty(self, prop, value): self.props[prop] = value
+	def GetProperty(self, prop): return self.props[prop]
+
+class PlayList(object):
+	PLAYLIST_MUSIC = 0
+	PLAYLIST_VIDEO = 1
+	
+	def __init__(self, type): self.__list = []
+	def Clear(self): self.__list = []
+	def Add(self, val): self.__list.append(val)
+	def Play(self): pass

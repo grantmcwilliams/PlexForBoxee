@@ -66,7 +66,7 @@ homeWindow.load()
 					<orientation>horizontal</orientation>
 					<itemgap>5</itemgap>
 					<onup>10</onup>
-					<ondown>200</ondown>
+					<ondown>700</ondown>
 					
 					<content type="action">
 						<onclick lang="Python">plexee.getHomeWindow().itemClicked(110)</onclick>
@@ -130,8 +130,105 @@ homeWindow.load()
 					</focusedlayout>
 				</control>
 			</control>
-			
-			<!-- SHARED LIBRARIES -->
+
+      <!-- SEARCH -->
+      <control type="group" id="700">
+        <width>1280</width>
+        <height>250</height>
+        <defaultcontrol>710</defaultcontrol>
+
+        <visible>IntegerGreaterThan(Container(710).NumItems,0)</visible>
+
+        <control type="image">
+          <width>1280</width>
+          <height>250</height>
+          <colordiffuse>112BB6EA</colordiffuse>
+          <texture>shapes/square.png</texture>
+          <visible>Control.HasFocus(710)</visible>
+        </control>
+
+        <control type="label">
+          <posx>10</posx>
+          <font>font24</font>
+          <textcolor>FFFFFFFF</textcolor>
+          <label>[B]SEARCH RESULTS[/B]</label>
+        </control>
+
+        <control type="list" id="710">
+          <posx>10</posx>
+          <posy>34</posy>
+          <height>211</height>
+          <width>1225</width>
+          <orientation>horizontal</orientation>
+          <itemgap>5</itemgap>
+
+          <onup>100</onup>
+          <ondown>200</ondown>
+
+          <content type="action">
+            <onclick lang="Python">homeWindow.itemClicked(710)</onclick>
+          </content>
+
+          <itemlayout width="175">
+            <control type="image">
+              <posx>15</posx>
+              <posy>5</posy>
+              <width>145</width>
+              <height>145</height>
+              <texture fallback="default_icons/square.png">$INFO[ListItem.Property(image0)]</texture>
+            </control>
+
+            <control type="label">
+              <posx>90</posx>
+              <posy>154</posy>
+              <width>160</width>
+              <height>60</height>
+
+              <wrapmultiline>true</wrapmultiline>
+              <font>font18</font>
+              <textcolor>66FFFFFF</textcolor>
+
+              <align>center</align>
+              <label>$INFO[ListItem.Property(custom:title)]</label>
+            </control>
+          </itemlayout>
+
+          <focusedlayout width="175">
+            <control type="image">
+              <posx>10</posx>
+              <posy>0</posy>
+              <width>155</width>
+              <height>155</height>
+              <visible>Control.HasFocus(710)</visible>
+              <texture border="10">shapes/blue_faded.png</texture>
+            </control>
+
+            <control type="image">
+              <posx>15</posx>
+              <posy>5</posy>
+              <width>145</width>
+              <height>145</height>
+              <texture fallback="default_icons/square.png">$INFO[ListItem.Property(image0)]</texture>
+            </control>
+
+            <control type="label">
+              <posx>90</posx>
+              <posy>154</posy>
+              <width>160</width>
+              <height>60</height>
+
+              <wrapmultiline>true</wrapmultiline>
+              <font>font18</font>
+              <textcolor>FFFFFFFF</textcolor>
+
+              <align>center</align>
+              <label>$INFO[ListItem.Property(custom:title)]</label>
+            </control>
+          </focusedlayout>
+        </control>
+      </control>
+
+      <!-- SHARED LIBRARIES -->
 			<control type="group" id="200">
 				<width>1280</width>
 				<height>250</height>
@@ -162,8 +259,8 @@ homeWindow.load()
 					<orientation>horizontal</orientation>
 					<itemgap>5</itemgap>
 					
-					<onup>100</onup>
-					<ondown>300</ondown>
+					<onup>700</onup>
+					<ondown>400</ondown>
 					
 					<content type="action">
 						<onclick lang="Python">homeWindow.itemClicked(210)</onclick>
@@ -228,102 +325,6 @@ homeWindow.load()
 				</control>
 			</control>
 			
-			<!-- SEARCH -->
-			<control type="group" id="700">
-				<width>1280</width>
-				<height>250</height>
-				<defaultcontrol>710</defaultcontrol>
-				
-				<visible>IntegerGreaterThan(Container(710).NumItems,0)</visible>
-				
-				<control type="image">
-					<width>1280</width>
-					<height>250</height>
-					<colordiffuse>112BB6EA</colordiffuse>
-					<texture>shapes/square.png</texture>
-					<visible>Control.HasFocus(710)</visible>
-				</control>
-				
-				<control type="label">
-					<posx>10</posx>
-					<font>font24</font>
-					<textcolor>FFFFFFFF</textcolor>
-					<label>[B]SEARCH RESULTS[/B]</label>
-				</control>
-				
-				<control type="list" id="710">
-					<posx>10</posx>
-					<posy>34</posy>
-					<height>211</height>
-					<width>1225</width>
-					<orientation>horizontal</orientation>
-					<itemgap>5</itemgap>
-					
-					<onup>200</onup>
-					<ondown>400</ondown>
-					
-					<content type="action">
-						<onclick lang="Python">homeWindow.itemClicked(710)</onclick>
-					</content>
-					
-					<itemlayout width="175">
-						<control type="image">
-							<posx>15</posx>
-							<posy>5</posy>
-							<width>145</width>
-							<height>145</height>
-							<texture fallback="default_icons/square.png">$INFO[ListItem.Property(image0)]</texture>
-						</control>
-						
-						<control type="label">
-							<posx>90</posx>
-							<posy>154</posy>
-							<width>160</width>
-							<height>60</height>
-							
-							<wrapmultiline>true</wrapmultiline>
-							<font>font18</font>
-							<textcolor>66FFFFFF</textcolor>
-							
-							<align>center</align>
-							<label>$INFO[ListItem.Property(custom:title)]</label>
-						</control>
-					</itemlayout>
-					
-					<focusedlayout width="175">
-						<control type="image">
-							<posx>10</posx>
-							<posy>0</posy>
-							<width>155</width>
-							<height>155</height>
-							<visible>Control.HasFocus(710)</visible>
-							<texture border="10">shapes/blue_faded.png</texture>
-						</control>
-						
-						<control type="image">
-							<posx>15</posx>
-							<posy>5</posy>
-							<width>145</width>
-							<height>145</height>
-							<texture fallback="default_icons/square.png">$INFO[ListItem.Property(image0)]</texture>
-						</control>
-						
-						<control type="label">
-							<posx>90</posx>
-							<posy>154</posy>
-							<width>160</width>
-							<height>60</height>
-							
-							<wrapmultiline>true</wrapmultiline>
-							<font>font18</font>
-							<textcolor>FFFFFFFF</textcolor>
-							
-							<align>center</align>
-							<label>$INFO[ListItem.Property(custom:title)]</label>
-						</control>
-					</focusedlayout>
-				</control>
-			</control>
 
 			<!-- RECENTLY ADDED -->
 			<control type="group" id="400">
@@ -356,7 +357,7 @@ homeWindow.load()
 					<orientation>horizontal</orientation>
 					<itemgap>5</itemgap>
 					
-					<onup>700</onup>
+					<onup>200</onup>
 					<ondown>500</ondown>
 					
 					<content type="action">

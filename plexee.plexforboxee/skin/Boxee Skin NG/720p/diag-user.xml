@@ -68,14 +68,13 @@ userDialog.load()
 			
 			<!-- CONTENTS ===============================================================-->
 			<control type="label" id="200">
-				<posx>200</posx>
+				<posx>50</posx>
 				<posy>100</posy>
-				<width>400</width>
-				<height>100</height>
+				<width>600</width>
+				<height>300</height>
 				<wrapmultiline>true</wrapmultiline>
-				<font>font22</font>
+				<font>font24</font>
 				<textcolor>66FFFFFF</textcolor>
-				<align>center</align>
 				<label>Loading Users....</label>
 			</control>
 					

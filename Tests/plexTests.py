@@ -46,22 +46,23 @@ class plexTests(unittest.TestCase):
 		"""Test connect"""
 		#self.setup()
 		#1. Connect to local plex server
-		server = PlexServer(constants.HOST, constants.PORT)
+		server = PlexServer.Manual(constants.HOST, constants.PORT)
+		server.connect()
 		if not server.isTokenRequired:
-			self.assertTrue(server.isValid())
+			self.assertTrue(server.isConnected)
 			data, url = server.getLibraryData()
 			print(data)
 			assert data is not None
 		else:
-			self.assertFalse(server.isValid())
+			self.assertFalse(server.isConnected)
 
 		#2. Connect to an invalid server
-		server = PlexServer('10.1.3.1', 32400)
-		self.assertFalse(server.isValid())
+		server = PlexServer.Manual('10.1.3.1', 32400)
+		self.assertFalse(server.isConnected)
 
 		#3. Connect to a non-plex server
-		server = PlexServer('www.google.com', 80)
-		self.assertFalse(server.isValid())
+		server = PlexServer.Manual('www.google.com', 80)
+		self.assertFalse(server.isConnected)
 
 
 	def testMyPlexConnection(self):
@@ -80,14 +81,15 @@ class plexTests(unittest.TestCase):
 
 		print(self.getCurrentDateTime() + "2. Do Plex Login")
 		plexManager.clearMyPlex()
-		self.assertEqual(plexManager.myPlexLogin(constants.USERNAME, constants.PASSWORD), 0, 'Login succeeded')
+		self.assertTrue(plexManager.myPlexLogin(constants.USERNAME, constants.PASSWORD),'Login succeeded')
 		token = plexManager.myplex.authenticationToken
 		print('TOKEN: %s' % token)
 		assert token is not None
 		print(self.getCurrentDateTime() + "2. END Plex Login")
 
 		print(self.getCurrentDateTime() + "3. Connect to server")
-		server = PlexServer(constants.HOST, constants.PORT, token)
+		server = PlexServer.Manual(constants.HOST, constants.PORT, token) #token
+		server.connect()
 		print(self.getCurrentDateTime() + "3. END Connect to server")
 		print(self.getCurrentDateTime() + "4. Get data")
 		data, url = server.getLibraryData()
@@ -95,5 +97,29 @@ class plexTests(unittest.TestCase):
 		assert data is not None
 		print(self.getCurrentDateTime() + "4. END Get data")
 
+	def testMyPlexUsers(self):
+		self.setup()
+		print(self.getCurrentDateTime() + "1. Create PlexManager")
+		plexManager = PlexManager({
+			'platform':'Boxee',
+			'platformversion':'System.BuildVersion',
+			'provides':'player',
+			'product':'Plexee',
+			'version':'1.0',
+			'device':'Windows',
+			'deviceid':'xxx'
+		})
+		print(self.getCurrentDateTime() + "1. END PlexManager")
 
-
+		print(self.getCurrentDateTime() + "2. Do Plex Login")
+		plexManager.clearMyPlex()
+		self.assertTrue(plexManager.myPlexLogin(constants.USERNAME, constants.PASSWORD), 'Login succeeded')
+		token = plexManager.myplex.authenticationToken
+		print('TOKEN: %s' % token)
+		assert token is not None
+		print(self.getCurrentDateTime() + "2. END Plex Login")
+		
+		result = plexManager.switchUser('1311516','1399')
+		self.assertEqual(result, PlexManager.SUCCESS)
+		result = plexManager.switchUser('1311516','139')
+		self.assertEqual(result, PlexManager.ERR_USER_PIN_FAILED)

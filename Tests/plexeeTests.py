@@ -18,18 +18,12 @@ class plexeeTests(unittest.TestCase):
 		config.SetValue('debug',1)
 
 	def testUsers(self):
-		plexManager = PlexManager({
-			'platform':'Boxee',
-			'platformversion':'System.BuildVersion',
-			'provides':'player',
-			'product':'Plexee',
-			'version':'1.0',
-			'device':'Windows',
-			'deviceid':'xxx'
-		})
+		plx = plexee.Plexee()
+		plexManager = plx.plexManager
 		plexManager.clearMyPlex()
-		self.assertEqual(plexManager.myPlexLogin(constants.USERNAME, constants.PASSWORD), 0, 'Login succeeded')
-		users = plexManager.getLocalUsers()
+		self.assertTrue(plexManager.myPlexLogin(constants.USERNAME, constants.PASSWORD), 'Login succeeded')
+		data, url = plexManager.getLocalUsers()
+		users = plx.createUsers(data)
 		print('Users: %d' % len(users))
 		self.assertNotEqual(0, len(users), "Users set up")
 
