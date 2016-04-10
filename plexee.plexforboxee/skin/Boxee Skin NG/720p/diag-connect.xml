@@ -73,35 +73,25 @@ connectDialog.load()
 				<width>560</width>
 				<height>450</height>
 				<orientation>vertical</orientation>
-				<usecontrolcoords>true</usecontrolcoords>
+				<usecontrolcoords>false</usecontrolcoords>
 				<itemgap>5</itemgap>
 				
 				<!-- Discover Clients -->
-				<control type="label" id="100">
-					<width>560</width>
-					<height>80</height>
-					<label>Please wait - searching for servers....</label>
-					<font>font24</font>
-					<align>left</align>
-					<textcolor>FF999999</textcolor>
-				</control>
-				
-				<control type="label" id="300">
-					<width>560</width>
-					<height>300</height>
-					<label></label>
-					<font>font24</font>
-					<align>left</align>
-					<visible>true</visible>
-					<wrapmultiline>true</wrapmultiline>
-					<textcolor>FFFFFFFF</textcolor>
-				</control>
-				
+        <control type="label" id="100">
+          <width>560</width>
+          <height>300</height>
+          <label></label>
+          <font>font24</font>
+          <align>left</align>
+          <wrapmultiline>true</wrapmultiline>
+          <textcolor>FF999999</textcolor>
+        </control>
+
 				<control type="grouplist">
 					<width>560</width>
 					<height>90</height>
 					<orientation>horizontal</orientation>
-					<usecontrolcoords>true</usecontrolcoords>
+					<usecontrolcoords>false</usecontrolcoords>
 					<itemgap>5</itemgap>					
 
 					<control type="button" id="401">

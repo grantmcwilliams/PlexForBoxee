@@ -11,6 +11,14 @@ import util
 import uuid
 from elementtree import ElementTree
 
+class PlexRequestError(Exception):
+	def __init__(self, msg, code):
+		self.httpCode = code
+		self.msg = msg
+
+class PlexConnectionFailedError(Exception):
+	pass
+
 ##
 # Manages the interaction with the Plex ecosystem
 #
@@ -19,14 +27,26 @@ class PlexManager(object):
 	Manages the interaction with the Plex ecosystem
 	"""
 	ERR_NO_MYPLEX_SERVERS=1
-	ERR_MPLEX_CONNECT_FAILED=2
+	#ERR_MPLEX_CONNECT_FAILED=2
 	ERR_MYPLEX_NOT_AUTHENTICATED=3
-	
+
+	SUCCESS=4
+	ERR_USER_PIN_FAILED=5
+	ERR_USER_MYPLEX_OFFLINE=6
+	ERR_USER_OTHER=7
+	ERR_USER_NO_PIN=8
+
+	__instance = None
+
+	@staticmethod
+	def Instance(): return PlexManager.__instance;
+
 	def __init__(self, props):
-		self.myServers = dict()
+		if not PlexManager.__instance is None:
+			raise TypeError("PlexManager may only have one instance")
+		self.manualServers = dict()
 		self.connectionErrors = []
 		self.connectionErrorPos = 0
-		self.sharedServers = dict()
 		self.myplex = MyPlexService(self)
 		self.xPlexPlatform = props['platform']
 		self.xPlexPlatformVersion = props['platformversion']
@@ -35,6 +55,34 @@ class PlexManager(object):
 		self.xPlexVersion = props['version']
 		self.xPlexDevice = props['device']
 		self.xPlexClientIdentifier = props['deviceid']
+		PlexManager.__instance = self
+
+	@classmethod
+	def getData(self, url, args = None):
+		if not args is None:
+			url = util.buildUrl(url, args)
+		util.logDebug("Retrieving data from: %s" % url)
+		http = util.Http()
+		data = http.Get(url)
+		PlexManager.handleRequestError(http)
+		return data
+	
+	@classmethod
+	def postData(self, url, postData):
+		util.logDebug("Retrieving data from: %s" % url)
+		http = util.Http()
+		data = http.Post(url, postData)
+		PlexManager.handleRequestError(http)
+		return data
+
+	@classmethod
+	def handleRequestError(self, http):
+		if http.code == 0 or http.ResultSuccess(): return
+		errorMsg = "An error occurred retrieving data from: %s\n%s" % (http.url, http.GetResponseMsg())
+		util.logError(errorMsg)
+		if http.ResultConnectFailed():
+			raise PlexConnectionFailedError()
+		raise PlexRequestError(errorMsg, http.code)
 
 	def putPlexCommand(self, url):
 		opener = urllib2.build_opener(urllib2.HTTPHandler)
@@ -50,7 +98,7 @@ class PlexManager(object):
 		request.add_header("X-Plex-Client-Identifier", self.xPlexClientIdentifier)
 		return opener.open(request) 
 	
-	def buildPlexCommand(self):
+	def buildPlexHttpRequest(self):
 		"""
 		Plex Headers
 		============
@@ -72,54 +120,25 @@ class PlexManager(object):
 		http.SetHttpHeader("X-Plex-Client-Identifier", self.xPlexClientIdentifier)
 		return http
 
-	def addMyServerObject(self, server):
-		if server.isValid():
-			if self.getServer(server.machineIdentifier) is None:
-				self.myServers[server.machineIdentifier] = server
-
-	def addSharedServerObject(self, server):
-		"""
-		Adds server to list of known servers
-		"""
-		if server.isValid():
-			if self.getServer(server.machineIdentifier) is None:
-				self.sharedServers[server.machineIdentifier] = server
-
-	def addSharedServers(self, serverDict):
-		"""
-		Adds a dictionary of server objects
-		"""
-		for	serverKey in serverDict:
-			self.addSharedServerObject(serverDict[serverKey])
-
-	def addMyServers(self, serverDict):
-		"""
-		Adds a dictionary of server objects
-		"""
-		for serverKey in serverDict:
-			self.addMyServerObject(serverDict[serverKey])
-
-	def addMyServer(self, host, port, accessToken = None):
-		"""
-		Adds server from
-		"""
-		server = PlexServer(host, port, accessToken)
-		self.addMyServerObject(server)
+	def addManualServer(self, host, port):
+		server = PlexServer.Manual(host, port)
+		server.connect()
+		if server.isConnected and self.getServer(server.machineIdentifier) is None:
+			self.manualServers[server.machineIdentifier] = server
 		return server
 
 	def clearState(self):
 		"""
 		Clears any Plex objects
 		"""
-		self.clearServers()
+		self.clearManualServers()
 		self.clearMyPlex()
 
-	def clearServers(self):
+	def clearManualServers(self):
 		"""
 		Removes all servers from the manager
 		"""
-		self.myServers = dict()
-		self.sharedServers = dict()
+		self.manualServers.clear()
 
 	def clearMyPlex(self):
 		"""
@@ -128,98 +147,88 @@ class PlexManager(object):
 		self.myplex = MyPlexService(self)
 
 	def getLocalUsers(self):
-		users = []
-		for key in self.myServers:
-			server = self.myServers[key]
-			a = self.myplex.getLocalUsers(server)
-			if not a is None:
-				users.extend(a)
-		return users
+		return self.myplex.getLocalUsers()
 	
-	def getServers(self):
-		return self.myServers
-		
-	def switchUser(self, token, machineIdentifier):
-		servers = self.getServers()
-		for k in servers:
-			server = servers[k]
-			server.userAccessToken = None
-			if machineIdentifier == server.machineIdentifier:
-				server.userAccessToken = token
+	def getMyPlexServers(self):	return self.myplex.allServers()
+	def getMyPlexRemoteServers(self): return self.myplex.remoteServers
+	def getMyPlexLocalServers(self): return self.myplex.localServers
+	def getLocalServers(self):
+		result = self.myplex.localServers.copy()
+		result.update(self.manualServers)
+		return result
+
+	def getManualServers(self): return self.manualServers
+
+	def switchUser(self, userId, pin):
+		return self.myplex.switchUser(userId, pin)
 	
 	def getServer(self, machineIdentifier):
 		"""
 		Return server from machine identifier
 		"""
-		server = self.myServers.get(machineIdentifier, None)
-		if server is None: server = self.sharedServers.get(machineIdentifier, None)
+		server = self.getLocalServers().get(machineIdentifier, None)
+		if server is None: server = self.getMyPlexRemoteServers().get(machineIdentifier, None)
 		return server
 
 	def deletePlaylist(self, server, id):
-		url = server._getUrl(server._getRootUrl(), "/playlists/"+id)
-		http = self.buildPlexCommand()
+		url = server.getUrl("/playlists/"+id)
+		http = self.buildPlexHttpRequest()
 		http.Delete(url)
+		PlexManager.handleRequestError(http)
 	
 	def deleteFromPlaylist(self, server, playlistId, itemId):
 		#Delete - DELETE http://10.1.3.200:32400/playlists/35339/items/72
-		url = server._getUrl(server._getRootUrl(), "/playlists/%s/items/%s" % (playlistId, itemId))
+		url = server.getUrl("/playlists/%s/items/%s" % (playlistId, itemId))
 		util.logDebug("Deleting playlist item: "+url)
-		http = self.buildPlexCommand()
+		http = self.buildPlexHttpRequest()
 		http.Delete(url)
+		PlexManager.handleRequestError(http)
 
 	def addToPlaylist(self, server, id, key):
 		#PUT http://10.1.3.200:32400/playlists/35339/items?uri=library%3A%2F%2F9dbbfd79-c597-4294-a32d-edf7c2975a41%2Fitem%2F%252Flibrary%252Fmetadata%252F34980
 		key = urllib.quote(key, '')
 		args = dict()
 		args['uri']="library:///item/%s" % key
-		url = server._getUrl(server._getRootUrl(), "/playlists/%s/items" % id, args)
+		url = server.getUrl("/playlists/%s/items" % id, args)
 		util.logDebug("Adding playlist item: "+url)
-		self.putPlexCommand(url)
+		http = self.buildPlexHttpRequest()
+		http.Put(url)
+		PlexManager.handleRequestError(http)
 	
 	def savePlaylist(self, server, name, attribs):
-		http = self.buildPlexCommand()
+		http = self.buildPlexHttpRequest()
 		args = dict()
 		args['title']=name
 		args['type']='audio'
 		args['smart']='0'
 		key = urllib.quote(attribs[0]['key'], '')
 		args['uri']="library:///item/%s" % key
-		url = server._getUrl(server._getRootUrl(), "/playlists", args)
+		url = server.getUrl("/playlists", args)
 		util.logDebug("Saving playlist: "+url)
+		
+		#TODO: Retest this is true
 		#Fudge post attributes (ignore=1) - otherwise a GET is done....
 		data = http.Post(url,'ignore=1')
-		if not data:
-			#todo: handle error
-			return
+		PlexManager.handleRequestError(http)
+
 		tree = ElementTree.fromstring(data)[0]
 		ratingKey = tree.attrib.get("ratingKey","")
 		util.logDebug("Rating Key: "+data)
 		if ratingKey != "":
 			for a in range(1,len(attribs)):
 				self.addToPlaylist(server, ratingKey, attribs[a]['key'])
-		
-		#Add - GET http://10.1.3.200:32400/playlists/35339/items?uri=library%3A%2F%2F9dbbfd79-c597-4294-a32d-edf7c2975a41%2Fitem%2F%252Flibrary%252Fmetadata%252F34980
-		#DELETE http://10.1.3.200:32400/playlists/35342
-		#GET http://10.1.3.200:32400/playlists?type=audio&title=Shalala+Lala&smart=0&uri=library%3A%2F%2F9dbbfd79-c597-4294-a32d-edf7c2975a41%2Fitem%2F%252Flibrary%252Fmetadata%252F34979
-		#GET http://10.1.3.200:32400/playlists?type=audio&uri=library%3A%2F%2F9a35df949e05bc86d0aa792c56e3db68c0c36250%2Fitem%2Flibrary%2Fmetadata%2F34976&smart=0&title=testy
-		#http://10.1.3.200:32400/playlists?type=audio&uri=library%3A%2F%2F9dbbfd79-c597-4294-a32d-edf7c2975a41%2Fitem%2Flibrary%2Fmetadata%2F34976&smart=0&title=testy
-		
+
+	def myPlexLoadServers(self):
+		if not self.myplex.isAuthenticated():
+			return self.ERR_MYPLEX_NOT_AUTHENTICATED
+		self.myplex.loadServers()
+		if not self.myplex.hasServers():
+			return self.ERR_NO_MYPLEX_SERVERS
+		return self.SUCCESS
+
 	def myPlexLogin(self, username, password):
 		self.myplex.login(username, password)
-		if self.myplex.isAuthenticated():
-			myPlexServers, myPlexRemote, foundServer = self.myplex.getServers()
-			
-			if len(myPlexServers) == 0 and len(myPlexRemote) == 0:
-				if not foundServer:
-					return self.ERR_MPLEX_CONNECT_FAILED
-				else:
-					return self.ERR_NO_MYPLEX_SERVERS
-				
-			self.addMyServers(myPlexServers)
-			self.addSharedServers(myPlexRemote)
-			return 0
-		else:
-			return self.ERR_MYPLEX_NOT_AUTHENTICATED
+		return self.myplex.isAuthenticated()
 
 ##
 # Encapsulates the MyPlex online service
@@ -228,21 +237,23 @@ class MyPlexService(object):
 	BASE_URL = "https://plex.tv"
 	AUTH_URL = BASE_URL + "/users/sign_in.xml"
 	LIBRARY_URL = BASE_URL + "/api/system/library/sections?auth_token=%s"
-	SERVERS_URL = BASE_URL + "/api/servers?auth_token=%s"
 	QUEUE_URL = BASE_URL + "/api/playlists/queue/all?auth_token=%s"
-	MULTIUSER_URL = BASE_URL + "/api/home/users?auth_token=%s"
-	SWITCHUSER_URL = BASE_URL + "/api/home/users/%s/switch?auth_token=%s"
-	GETUSERS_URL = BASE_URL + "/servers/%s/access_tokens.xml?auth_token=%s"
+	GETUSERS_URL = BASE_URL + "/api/home/users?auth_token=%s"
+	SWITCHUSER_URL = BASE_URL + "/api/home/users/%s/switch?pin=%s"
+	USERRESOURCES_URL = BASE_URL + "/api/resources?includeHttps=1&X-Plex-Token=%s"
 
 	def __init__(self, manager, username = None, password = None):
 		self.username = None
 		self.password = None
 		self.authenticationToken = None
+		self.userToken = None
+		self.localServers = dict()
+		self.remoteServers = dict()
 		self.plexManager = manager
 
 		if username and password:
 			self.login(username, password)
-			
+
 	def login(self, username, password):
 		self.username = username
 		self.password = password
@@ -253,14 +264,22 @@ class MyPlexService(object):
 		self.username = None
 		self.password = None
 		self.authenticationToken = None
+		self.localServers.clear()
+		self.remoteServers.clear()
 	
+	def allServers(self):
+		result = self.localServers.copy()
+		result.update(self.remoteServers)
+		return result
+
 	def updateToken(self):
-		http = self.plexManager.buildPlexCommand()
+		http = self.plexManager.buildPlexHttpRequest()
 		base64String = base64.encodestring("%s:%s" % (self.username, self.password)).replace('\n', '')
 		http.SetHttpHeader("Authorization", "Basic %s" % base64String)
 
 		postData = "username=%s&password=%s" % (self.username, self.password)
 		data = http.Post(MyPlexService.AUTH_URL, postData)
+		PlexManager.handleRequestError(http)
 		http.Reset()
 
 		if data:
@@ -272,130 +291,104 @@ class MyPlexService(object):
 		return self.authenticationToken != None
 
 	def getQueueLinkData(self, key):
-		url = key+"&auth_token="+self.authenticationToken
-		return util.Http().Get(url)
+		url = key+"&auth_token="+self.__getUserToken()
+		if not self.authenticationToken: return url, None
+		data = PlexManager.getData(url)
+		return data, url
 		
 	def getQueueData(self):
-		if self.authenticationToken:
-			url = MyPlexService.QUEUE_URL % self.authenticationToken
-			return util.Http().Get(url)
-		else:
-			return None
+		url = MyPlexService.QUEUE_URL % self.__getUserToken()
+		if not self.authenticationToken: return url, None
+		data = PlexManager.getData(url)
+		return data, url
 
-	def getMultiUserData(self):
-		if self.authenticationToken:
-			url = MyPlexService.MULTIUSER_URL % self.authenticationToken
-			return util.Http().Get(url)
-		else:
-			return None
+	def httpGet(self, url):
+		http = self.plexManager.buildPlexHttpRequest()
+		http.SetHttpHeader('X-Plex-Token',self.authenticationToken)
+		data = http.Get(url)
+		PlexManager.handleRequestError(http)
+		return data
 
-	def getLocalUsers(self, server):
-		if self.authenticationToken:
-			url = MyPlexService.GETUSERS_URL % (server.machineIdentifier, self.authenticationToken)
-			data = util.Http().Get(url)
-			if not data:
-				util.logDebug("Error failed to access users %s" % url);
-				return None
+	def httpPost(self, url, postData = ''):
+		http = self.plexManager.buildPlexHttpRequest()
+		http.SetHttpHeader('X-Plex-Token',self.authenticationToken)
+		data = http.Post(url,postData)
+		PlexManager.handleRequestError(http)
+		return data
 
-			userPlusData = self.getMultiUserData()
-			plusTree = ElementTree.fromstring(userPlusData)
-				
-			tree = ElementTree.fromstring(data)
-			users = []
-			#Add current user
-			myplex = self.plexManager.myplex
-			user = dict()
-			user['name'] = myplex.username
-			user['id'] = '0'
-			user['token'] = myplex.authenticationToken
-			user['machineidentifier'] = '0'
-			user['thumb'] = ''
-			users.append(user)
-			
-			for child in tree:
-				if not child.attrib.has_key("allow_sync"):
-					#Skip non-user records
-					continue
-				user = dict()
-				user['name'] = child.attrib.get("title","")
-				user['id'] = child.attrib.get("id","")
-				user['token'] = child.attrib.get("token","")
-				user['machineidentifier'] = server.machineIdentifier
-				users.append(user)
-			
-			for user in users:
-				#try and match more information
-				for c in plusTree:
-					if c.attrib.get("id","") == user['id']:
-						user['thumb'] = c.attrib.get("thumb","")
-					elif user['id'] == '0' and c.attrib.get("username","") == user['name']:
-						user['thumb'] = c.attrib.get("thumb","")
-						user['id'] = c.attrib.get("id","")
-			
-			return users
-		else:
-			return None
+	def switchUser(self, userId, pin):
+		if not self.authenticationToken: return False
+		url = MyPlexService.SWITCHUSER_URL % (userId, pin)
+		http = self.plexManager.buildPlexHttpRequest()
+		http.SetHttpHeader('X-Plex-Token',self.authenticationToken)
+		data = http.Post(url)
+		if not data:
+			if http.ResultUnauthorised() and pin != '':
+				util.logDebug("User switch failed PIN invalid");
+				return PlexManager.ERR_USER_PIN_FAILED
+			util.logDebug("Error failed to access users %s HttpCode: %d" % (url, http.code));
+			return PlexManager.ERR_USER_OTHER
 		
-	def getServers(self):
-		localServers = dict()
-		remoteServers = dict()
+		tree = ElementTree.fromstring(data)
+		token = None
+		for child in tree:
+			if child.tag == 'authentication-token':
+				token = child.text
+				break
+		if token is None:
+			return PlexManager.ERR_USER_OTHER
+		#Set usertoken
+		self.userToken = token
 
-		foundServer = False
+		#reload myplex servers
+		self.loadServers()
+
+		return PlexManager.SUCCESS
+
+	def __getUserToken(self):
+		if self.userToken: return self.userToken
+		return self.authenticationToken
+
+	def getLocalUsers(self):
+		if not self.authenticationToken: return None
+		url = MyPlexService.GETUSERS_URL % (self.authenticationToken)
+		data = PlexManager.getData(url)
+		return data, url
+
+	def hasServers(self):
+		return len(self.localServers) >0 or len(self.remoteServers) > 0
+
+	def loadServers(self):
+		self.localServers.clear()
+		self.remoteServers.clear()
+
+		if not self.isAuthenticated():
+			return
 		
-		if self.isAuthenticated():
-			url = MyPlexService.SERVERS_URL % self.authenticationToken
-			util.logDebug("Finding servers via: "+url)
-			data = util.Http().Get(url)
-			if not data:
-				return localServers, remoteServers, foundServer
+		url = MyPlexService.USERRESOURCES_URL % self.__getUserToken()
+		util.logDebug("Finding servers via: "+url)
+		data = util.Http().Get(url)
+		if not data:
+			return
 
-			tree = ElementTree.fromstring(data)
-			for child in tree:
-				host = child.attrib.get("address", "")
-				port = child.attrib.get("port", "")
-				localAddresses = child.attrib.get("localAddresses", "")
-				accessToken = child.attrib.get("accessToken", "")
-				machineIdentifier = child.attrib.get("machineIdentifier", "")
-				local = child.attrib.get("owned", "0")
-				sourceTitle = child.attrib.get("sourceTitle", "")
+		tree = ElementTree.fromstring(data)
+		#Connect to servers
+		for device in tree:
+			#Skip devices that aren't servers
+			if device.attrib.get('provides','') != 'server': continue
+			server = PlexServer.MyPlex(device)
+			if server.isLocal:
+				self.localServers[server.machineIdentifier] = server
+			else:
+				self.remoteServers[server.machineIdentifier] = server
 
-				util.logInfo("MyPlex found server %s:%s" % (host,port))
-				foundServer = True
-				server = None
-				if local == "1":
-					#Try the local addresses
-					#TODO: Similiar code exists in the server and this is a bit convoluted....
-					if localAddresses:
-						localAddresses = localAddresses.split(',')
-						util.logInfo("--> Resolving local addresses")
-						resolved = False
-						for addr in localAddresses:
-							http = util.Http()
-							util.logDebug("--> Trying local address %s:32400" % addr)
-							data = http.Get("http://"+addr+":32400/?X-Plex-Token="+accessToken)
-							if http.GetHttpResponseCode() == -1:
-								data = http.Get("https://"+addr+":32400/?X-Plex-Token="+accessToken)
-							if data:
-								tree = ElementTree.fromstring(data)
-								localMachineIdentifier = tree.attrib.get("machineIdentifier", "")
-								if localMachineIdentifier == machineIdentifier:
-									util.logInfo("--> Using local address %s:32400 instead of remote address" % addr)
-									server = PlexServer(addr, "32400", accessToken)
-									resolved = True
-									break
-						if not resolved:
-							util.logInfo("--> Using remote address %s unable to resolve local address" % host)
-							server = PlexServer(host, port, accessToken)
-
-					if server is None or not server.isValid():
-						continue
-					localServers[machineIdentifier] = server
-				else:
-					#Remote server found
-					server = PlexServer(host, port, accessToken, sourceTitle)
-					remoteServers[machineIdentifier] = server
-		
-		return localServers, remoteServers, foundServer
+class PlexServerConnection(object):
+	def __init__(self):
+		self.address = None
+		self.port = None
+		self.protocol = None
+		self.uri = None
+		self.isLocal = False
 
 ##
 # Encapsulates a Plex server (local or remote)
@@ -405,10 +398,8 @@ class PlexServer(object):
 	Encapsulates a Plex server (local or remote)
 	"""
 
-	#TODO: Add islocal
 	CHANNEL_URL = "/channels/all"
 	LIBRARY_URL = "/library/sections"
-	SERVERS_URL = "/servers"
 	RECENTLY_ADDED_URL = "/library/recentlyAdded"
 	ON_DECK_URL = "/library/onDeck"
 	PHOTO_TRANSCODE_URL = "/photo/:/transcode"
@@ -425,18 +416,115 @@ class PlexServer(object):
 	#Transcode qualities
 	QUALITY_LIST = ["320kbps","720kbps","1.5mbps","2mbps","3mbps","4mbps","8mbps","10mbps","12mbps","20mbps"]
 
-	def __init__(self, host, port, accessToken = None, remoteTitle = None):
-		self.host = host
-		self.port = port
-		self.accessToken = accessToken
+	def addConnection(self):
+		conn = PlexServerConnection()
+		self.__connections.append(conn)
+		return conn
+
+	def connect(self):
+		#If there is a local address connect to this, otherwise connect to remote address
+		#connections = sorted(server['connections'], key=lambda k: k['local'], reverse=True)
+		connections = self.__connections
+		connected = False
+		for conn in connections:
+			http = util.Http()
+			self.host = conn.host
+			self.port = conn.port
+			self.protocol = conn.protocol
+			url = self.__getRootUrl()
+			data = http.Get(url)
+			code = http.GetHttpResponseCode()
+			util.logDebug('Connecting to server: %s' % url)
+			if http.ResultUnauthorised():
+				util.logDebug('Unauthorised - token required: %s' % url)
+				self.isTokenRequired = True
+			elif http.ResultConnectFailed():
+				util.logDebug('No such site: %s' % url)
+			if not http.ResultSuccess(): continue
+			
+			util.logInfo("Connected to server: %s" % url)
+			try:
+				tree = ElementTree.fromstring(data)
+				self.friendlyName = tree.attrib.get("friendlyName", None)
+				self.machineIdentifier = tree.attrib.get("machineIdentifier", None)
+				self.platform = tree.attrib.get("platform", None)
+				self.platformVersion = tree.attrib.get("platformVersion", None)
+				self.transcoderVideoBitrates = tree.attrib.get("transcoderVideoBitrates", None)
+				self.transcoderVideoQualities = tree.attrib.get("transcoderVideoQualities", None)
+				self.transcoderVideoResolutions = tree.attrib.get("transcoderVideoResolutions", None)
+				self.version = tree.attrib.get("version", None)
+				connected = True
+				break
+			except:
+				#Wasn't XML data
+				util.logError('Accessed server %s:%s but I was unable to process the reponse. Is the Plex server and port correct?' % (self.host, self.port))
+				data = None
+			else:
+				util.logDebug("Error accessing server: %s return code: %s" % (url, code))
+		
+		if not connected:
+			util.logError("Error accessing server: %s" % self.friendlyName)
+		self.isConnected = connected
+
+	@classmethod
+	def MyPlex(cls, deviceXmlElement):
+		device = deviceXmlElement
+		server = cls()
+		server.friendlyName = device.attrib.get('name')
+		util.logInfo("MyPlex found server: %s" % server.friendlyName)
+		server.platform = device.attrib.get('platform')
+		server.platformVersion = device.attrib.get('platformVersion')
+		server.machineIdentifier = device.attrib.get('clientIdentifier')
+		server.accessToken = device.attrib.get('accessToken')
+		server.httpsRequired = device.attrib.get('httpsRequired') == '1'
+		server.appearsOffline = device.attrib.get('presence') == '0'
+		server.remoteTitle = device.attrib.get('sourceTitle')
+		#server.isLocal = device.attrib.get('owned') == '1'
+		server.isLocal = device.attrib.get('home','') != '0'
+		server.version = device.attrib.get('productVersion')
+		
+		for conn in device:
+			if conn.tag != 'Connection': continue
+			connection = server.addConnection()
+			connection.host = conn.attrib.get('address')
+			connection.port = conn.attrib.get('port')
+			connection.protocol = conn.attrib.get('protocol')
+			connection.uri = conn.attrib.get('uri')
+			connection.isLocal = conn.attrib.get('local') == '1'
+		return server
+
+	@classmethod
+	def Manual(cls, host, port, token = None):
+		result = cls()
+		result.host = host
+		result.port = port
+		result.accessToken = token
+		result.isTokenRequired = False
+		result.isLocal = False
+
+		#Try http first
+		connection = result.addConnection()
+		connection.host = host
+		connection.port = port
+		connection.protocol = 'https'
+		connection.uri = '%s://%s:%s' % (connection.protocol, connection.host, connection.port)
+
+		#Try https second
+		connection = result.addConnection()
+		connection.host = host
+		connection.port = port
+		connection.protocol = 'http'
+		connection.uri = '%s://%s:%s' % (connection.protocol, connection.host, connection.port)
+		return result
+
+	def __init__(self):
+		self.accessToken = None
 		self.userAccessToken = None
-		self.isSecure = False
 		self.isTokenRequired = False
-
 		self.isLocal = False
-		self.remoteTitle = remoteTitle
-		self.isMultiuser = False
-
+		self.appearsOffline = False
+		self.isConnected = False
+		self.remoteTitle = None
 		self.friendlyName = None
 		self.machineIdentifier = None
 		self.platform = None
@@ -446,72 +534,14 @@ class PlexServer(object):
 		self.transcoderVideoResolutions = None
 		self.version = None
 
-		self.__getServerAttributes()
-	
-	def getCurrentAccessToken(self):
-		if self.userAccessToken != None:
-			return self.userAccessToken
-		return self.accessToken
-	
-	def __getServerAttributes(self):
-		#Try unencrypted and no access token first
-		http = util.Http()
-		data = http.Get("http://%s:%s" % (self.host, self.port))
-		code = http.GetHttpResponseCode()
-			
-		if code == -1:
-			#Failed to connect, either site is not available or secured
-			#Try ssl
-			data = http.Get("https://%s:%s" % (self.host, self.port))
-			code = http.GetHttpResponseCode()
+		self.httpsRequired = False
 
-			if code != -1:
-				#Looks like it's secured
-				self.isSecure = True
+		self.host = None
+		self.port = None
+		self.protocol = 'http'
 
-		self.isTokenRequired = (code == 401)
-		if code == 401:
-			#Permission denied
-			if self.getCurrentAccessToken() is None:
-				util.logInfo("User access tokens are required to access this server")
-				return
-			data = http.Get(self.__getRootUrl())
-			code = http.GetHttpResponseCode()
-			if code == 401:
-				#Still an issue even with a token
-				util.logError("User token may not be valid - permission denied when accessing the Plex Server")
-				return
+		self.__connections = []
 
-		if data:
-			try:
-				tree = ElementTree.fromstring(data)
-				self.friendlyName = tree.attrib.get("friendlyName", None)
-				self.isMultiuser = tree.attrib.get("multiuser", False)
-				self.machineIdentifier = tree.attrib.get("machineIdentifier", None)
-				self.platform = tree.attrib.get("platform", None)
-				self.platformVersion = tree.attrib.get("platformVersion", None)
-				self.transcoderVideoBitrates = tree.attrib.get("transcoderVideoBitrates", None)
-				self.transcoderVideoQualities = tree.attrib.get("transcoderVideoQualities", None)
-				self.transcoderVideoResolutions = tree.attrib.get("transcoderVideoResolutions", None)
-				self.version = tree.attrib.get("version", None)
-			except:
-				#Wasn't XML data
-				util.logError('Accessed server %s:%s but I was unable to process the reponse. Is the Plex server and port correct?' % (self.host, self.port))
-				data = None
-
-	def isValid(self):
-		return self.machineIdentifier != None
-
-	def getData(self, url, args = None):
-		url = self.getUrl(url, args)
-		util.logDebug("Retrieving data from: " + url)
-		http = util.Http()
-		#TODO: Handle errors
-		data = http.Get(url)
-		if util.Http().GetHttpResponseCode() == 400:
-			pass
-		return data, url
-	
 	def getUrl(self, url, args = None):
 		return self.__getUrl(self.__getRootUrl(), url, args)
 	
@@ -540,8 +570,8 @@ class PlexServer(object):
 		else: url_query = currentArgs
 
 		url_parts[4] = urllib.urlencode(url_query)
-		accessToken = self.getCurrentAccessToken()
-		if not self.isLocal and accessToken:
+		accessToken = self.accessToken
+		if accessToken:
 			if url_parts[4] != "":
 				url_parts[4] = url_parts[4] + "&X-Plex-Token=" + accessToken
 			else:
@@ -550,29 +580,78 @@ class PlexServer(object):
 		url = urlparse.urlunparse(url_parts)
 		return url
 	
-	def setMediaPlayedPosition(self, mediaKey, positionMsec):
+	#ME  /:/playQueues?type=video&repeat=0&shuffle=0&includeChapters=1&uri=library%2F8eb19616-0d8b-49ab-a6c1-b7ab72878074%2Fitem%2F%2Flibrary%2Fmetadata%2F40080&X-Plex-Token=sgsfVo6jH59RtFAW4ByS
+	#/playQueues?type=video&includeChapters=1&uri=library%3A%2F%2F8eb19616-0d8b-49ab-a6c1-b7ab72878074%2Fitem%2F%252Flibrary%252Fmetadata%252F40112&shuffle=0&repeat=0
+	#library://8eb19616-0d8b-49ab-a6c1-b7ab72878074/item/%2Flibrary%2Fmetadata%2F40112
+	def getPlayQueueId_TEST(self, videoNode):
+		args = dict()
+		args['type']='video'
+		args['includeChapters']='1'
+		args['uri']='library://%s/item/%s' % (videoNode.attrib['librarySectionUUID'],urllib.quote_plus(videoNode.attrib['key']))
+		args['shuffle']='0'
+		args['repeat']='0'
+		http = PlexManager.Instance().buildPlexHttpRequest()
+		http.SetHttpHeader('X-Plex-Token', self.userAccessToken)
+		http.SetHttpHeader('X-Plex-Client-Identifier',PlexManager.Instance().xPlexClientIdentifier)
+		url = self.getUrl("/playQueues",args)
+		data = http.Post(url,'')
+		#playQueueItemID
+		if not data: return None
+		for child in ElementTree.fromstring(data):
+			return child.attrib.get('playQueueItemID',None)
+
+	#/:/progress?identifier=com.plexapp.plugins.library&key=40137&time=165000&X-Plex-Token=sgsfVo6jH59RtFAW4ByS
+	#/:/timeline?ratingKey=40112&key=%2Flibrary%2Fmetadata%2F40112&state=playing&playQueueItemID=3979&time=216754&duration=2544384&X-Plex-Token=sgsfVo6jH59RtFAW4ByS
+	#/:/timeline?type=video&repeat=0&shuffle=0&includeChapters=1&uri=library%2F8eb19616-0d8b-49ab-a6c1-b7ab72878074%2Fitem%2F%2Flibrary%2Fmetadata%2F40080&X-Plex-Token=sgsfVo6jH59RtFAW4ByS
+	#TODO: It looks like the client has to be registered for this to work
+	#For users this generates an X-Plex-Client-Identifier error on the Plex Server
+	#I believe because it can't find the registered client
+	def setMediaPlayedPosition_TEST(self, videoNode, queueId, positionMsec):
 		"""
 		Update media played position for onDeck and resuming behaviour
 		An item will be added to the deck by plex based on this call
 		"""
 		args = dict()
-		args['key']=mediaKey
+		args['ratingKey']=videoNode.attrib['ratingKey']
+		args['key']=videoNode.attrib['key']
+		args['state']='playing'
+		args['playQueueItemID']=queueId
+		args['time']=str(positionMsec)
+		args['duration']=videoNode.attrib['duration']
+		http = PlexManager.Instance().buildPlexHttpRequest()
+		http.SetHttpHeader('X-Plex-Token', self.userAccessToken)
+		http.SetHttpHeader('X-Plex-Client-Identifier',PlexManager.Instance().xPlexClientIdentifier)
+		url = self.getUrl("/:/timeline",args)
+		util.logDebug("Setting media key=[%s] to position=[%s]" % (args['ratingKey'],str(positionMsec)))
+		http.Get(url)
+
+	def setMediaPlayedPosition(self, videoNode, queueId, positionMsec):
+		"""
+		Update media played position for onDeck and resuming behaviour
+		An item will be added to the deck by plex based on this call
+		"""
+		ratingKey=videoNode.attrib['ratingKey']
+		key=videoNode.attrib['key']
+
+		args = dict()
+		args['key']=ratingKey
 		args['identifier']="com.plexapp.plugins.library"
 		args['time']=str(positionMsec)
 		url = self.getUrl("/:/progress",args)
-		util.logDebug("Setting media key=[%s] to position=[%s]" % (mediaKey,str(positionMsec)))
+		http = PlexManager.Instance().buildPlexHttpRequest()
+		util.logDebug("Setting media key=[%s] to position=[%s]" % (ratingKey,str(positionMsec)))
 		util.Http().Get(url)
 	
-	def setMediaWatched(self, mediaKey):
+	def setMediaWatched(self, ratingKey):
 		"""
 		Set media as watched
 		Removes from deck
 		"""
 		args = dict()
-		args['key']=mediaKey
+		args['key']=ratingKey
 		args['identifier']="com.plexapp.plugins.library"
 		url = self.getUrl(PlexServer.WATCHED_URL,args)
-		util.logDebug("Setting media key=[%s] as watched" % mediaKey)
+		util.logDebug("Setting media key=[%s] as watched" % ratingKey)
 		util.Http().Get(url)
 	
 	def setMediaUnwatched(self, mediaKey):
@@ -712,12 +791,16 @@ class PlexServer(object):
 		url = self.getUrl(PlexServer.TRANSCODE_URL, args)
 		util.logDebug("-->Setting transcode stream: "+url)
 		return url
+	
+	def getData(self, url, args = None):
+		url = self.getUrl(url, args)
+		data = PlexManager.getData(url)
+		return data, url
 		
 	def getPlexItem(self, keyUrl):
 		url = self.getUrl(keyUrl)
-		if not url:
-			return False
-		data = util.Http().Get(self.getUrl(url))
+		if not url: return False
+		data = PlexManager.getData(url)
 		if not data:
 			return False
 		tree = ElementTree.fromstring(data)
@@ -735,58 +818,66 @@ class PlexServer(object):
 		"""
 		Returns the root url of the server
 		"""
-		protocol = 'http'
-		if self.isSecure: protocol = 'https'
-		return self.__getUrl("%s://%s:%s" % (protocol, self.host, self.port), "/")
+		#return self.__getUrl(self.__uri, "/")
+		return self.__getUrl("%s://%s:%s" % (self.protocol, self.host, self.port), "/")
 
 	def getPlaylistData(self):
-		return self.getData(PlexServer.PLAYLIST_URL)
+		url = self.getUrl(PlexServer.PLAYLIST_URL)
+		return PlexManager.getData(url), url
 	
 	def getChannelData(self):
 		"""
 		Returns the channel url of the server
 		"""
-		return self.getData(PlexServer.CHANNEL_URL)
+		url = self.getUrl(PlexServer.CHANNEL_URL)
+		return PlexManager.getData(url), url
 
 	def getSectionData(self, sectionId):
 		"""
 		Returns the section data
 		"""
-		return self.getData(PlexServer.LIBRARY_URL+"/"+sectionId)
+		url = self.getUrl(PlexServer.LIBRARY_URL+"/"+sectionId)
+		return PlexManager.getData(url), url
 
 	def getLibraryData(self):
 		"""
 		Returns the library data from the server
 		"""
-		return self.getData(PlexServer.LIBRARY_URL)
+		url = self.getUrl(PlexServer.LIBRARY_URL)
+		return PlexManager.getData(url), url
 
 	def getRecentlyAddedData(self):
 		"""
 		Returns the recently added url
 		"""
-		return self.getData(PlexServer.RECENTLY_ADDED_URL)
+		url = self.getUrl(PlexServer.RECENTLY_ADDED_URL)
+		return PlexManager.getData(url), url
 
 	def getOnDeckData(self):
 		"""
 		Returns the recently added url
 		"""
-		return self.getData(PlexServer.ON_DECK_URL)
+		url = self.getUrl(PlexServer.ON_DECK_URL)
+		return PlexManager.getData(url), url
 
 	def getSearchData(self, query):
 		args = dict()
 		args['query'] = query
-		return self.getData(PlexServer.SEARCH_URL, args)
+		url = self.getUrl(PlexServer.SEARCH_URL)
+		return PlexManager.getData(url, args), url
 		
 	def getSearchActorData(self, query):
 		args = dict()
 		args['query'] = query
-		return self.getData(PlexServer.SEARCH_ACTOR_URL, args)
+		url = self.getUrl(PlexServer.SEARCH_ACTOR_URL)
+		return PlexManager.getData(url, args), url
 
 	def getSearchTrackData(self, query):
 		args = dict()
 		args['type'] = '10'
 		args['query'] = query
-		return self.getData(PlexServer.SEARCH_URL, args)
+		url = self.getUrl(PlexServer.SEARCH_URL)
+		return PlexManager.getData(url, args), url
 
 	def getThumbUrl(self, key, width, height):
 		"""

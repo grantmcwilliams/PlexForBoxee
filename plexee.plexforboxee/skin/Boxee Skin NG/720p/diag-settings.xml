@@ -22,15 +22,15 @@ settingsDialog.load()
 		
 		<control type="group">
 			<posx>240</posx>
-			<posy>110</posy>
+			<posy>50</posy>
 			<width>800</width>
-			<height>600</height>
+			<height>650</height>
 			
 			
 			<!-- setting window background -->
 			<control type="image">
 				<width>800</width>
-				<height>600</height>
+				<height>650</height>
 				
 				<colordiffuse>FF0E1418</colordiffuse>
 				<texture border="10">shapes/rounded.png</texture>
@@ -39,7 +39,7 @@ settingsDialog.load()
 			<!-- setting window outline -->
 			<control type="image">
 				<width>800</width>
-				<height>600</height>
+				<height>650</height>
 				
 				<texture border="10">shapes/rounded_outline.png</texture>
 			</control>
@@ -109,7 +109,7 @@ settingsDialog.load()
 				<posx>0</posx>
 				<posy>70</posy>
 				<width>200</width>
-				<height>500</height>
+				<height>550</height>
 				<orientation>vertical</orientation>
 				<usecontrolcoords>true</usecontrolcoords>
 				<itemgap>5</itemgap>
@@ -179,11 +179,11 @@ settingsDialog.load()
 					<posx>220</posx>
 					<posy>70</posy>
 					<width>560</width>
-					<height>500</height>
+					<height>550</height>
 					<visible>ControlGroup(40).HasFocus(41)</visible>
 					<orientation>vertical</orientation>
 					<usecontrolcoords>true</usecontrolcoords>
-					<itemgap>5</itemgap>
+					<itemgap>2</itemgap>
 					<onleft>40</onleft>
 
 					<!-- Discover Clients -->
@@ -328,6 +328,43 @@ settingsDialog.load()
 						<texturefocus border="10">shapes/blue_faded.png</texturefocus>
 						<texturenofocus border="10">-</texturenofocus>
 					</control>
+
+          <!-- MyPlex - PIN -->
+          <control type="edit" id="111">
+            <width>560</width>
+            <height>42</height>
+
+            <label>PIN</label>
+            <font>font24</font>
+            <aligny>center</aligny>
+            <password>True</password>
+
+            <textcolor>FFFFFFFF</textcolor>
+            <focusedcolor>FFFFFFFF</focusedcolor>
+            <textoffsetx>45</textoffsetx>
+
+            <texturefocus border="10">shapes/blue_faded.png</texturefocus>
+            <texturenofocus border="10">-</texturenofocus>
+          </control>
+
+          <!-- Skip unregistered servers -->
+					<control type="togglebutton" id="110">
+            <posx>40</posx>
+            <width>560</width>
+						<height>42</height>
+					
+						<label>Skip offline servers</label>
+						<font>font24</font>
+						<align>left</align>
+						<textoffsetx>45</textoffsetx>
+						<textcolor>FFFFFFFF</textcolor>
+						<focusedcolor>FFFFFFFF</focusedcolor>
+						
+						<texturenofocus border="40,5,5,5">buttons/toggle_no_focus.png</texturenofocus>
+						<texturefocus border="40,5,5,5">buttons/toggle_focus.png</texturefocus>
+						<alttexturenofocus border="40,5,5,5">buttons/toggle_alt_no_focus.png</alttexturenofocus>
+						<alttexturefocus border="40,5,5,5">buttons/toggle_alt_focus.png</alttexturefocus>
+					</control>          
 					
 					<control type="button" id="108">
 						<posx>460</posx>

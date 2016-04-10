@@ -5,10 +5,19 @@ import inspect
 import md5
 import urllib2
 import urllib
+import urlparse
+import cgi
 from elementtree import ElementTree
 
 class Constants(object):
 	IS_DEBUG = -1
+
+def buildUrl(url, params):
+	url_parts = list(urlparse.urlparse(url))
+	query = dict(cgi.parse_qsl(url_parts[4]))
+	query.update(params)
+	url_parts[4] = urllib.urlencode(query)
+	return urlparse.urlunparse(url_parts)
 
 def isnumber(x):
 	# "Is x a number? We say it is if it has an __int__ method."
@@ -74,21 +83,26 @@ def msToFormattedDuration(ms, humanReadable = True):
 
 def logDebug(msg):
 	if Constants.IS_DEBUG == -1:
-		Constants.IS_DEBUG = mc.GetApp().GetLocalConfig().GetValue("debug")
+		if mc.GetApp().GetLocalConfig().GetValue("debug") == '1':
+			Constants.IS_DEBUG = 1
+		else:
+			Constants.IS_DEBUG = 0
 		
 #	msg = cleanString(msg)
-	if Constants.IS_DEBUG:
+	if Constants.IS_DEBUG == 1:
 		try:
 			stack = inspect.stack()
 			the_class = stack[1][0].f_locals["self"].__class__
 			the_method = stack[1][0].f_code.co_name
 			print "DEBUG Plexee: %s, %s: %s" % (the_class, the_method, str(msg))
 		except:
-			print("DEBUG Plexee: " + str(msg))
-			#pass
+			try:
+				print("DEBUG Plexee: " + str(msg))
+			except:
+				pass
 	else:
-		#pass
-		print("DEBUG Plexee: " + str(msg))
+		pass
+		#print("DEBUG Plexee: " + str(msg))
 
 def logInfo(msg):
 #	msg = cleanString(msg)
@@ -129,57 +143,136 @@ def getProperties(itemlist, property):
 	return results
 	
 class Http(object):
+
+	HTTP_CONNECT_FAILED = -1
+
+	HTTP_CODES = {
+		-1:'CONNECTION_FAILED',
+		100:'CONTINUE',
+		101:'SWITCHING_PROTOCOLS',
+		102:'PROCESSING',
+		200:'OK',
+		201:'CREATED',
+		202:'ACCEPTED',
+		203:'NON_AUTHORITATIVE_INFORMATION',
+		204:'NO_CONTENT',
+		205:'RESET_CONTENT',
+		206:'PARTIAL_CONTENT',
+		207:'MULTI_STATUS',
+		208:'ALREADY_REPORTED',
+		226:'IM_USED',
+		300:'MULTIPLE_CHOICES',
+		301:'MOVED_PERMANENTLY',
+		302:'FOUND',
+		303:'SEE_OTHER',
+		304:'NOT_MODIFIED',
+		305:'USE_PROXY',
+		307:'TEMPORARY_REDIRECT',
+		308:'PERMANENT_REDIRECT',
+		400:'BAD_REQUEST',
+		401:'UNAUTHORIZED',
+		402:'PAYMENT_REQUIRED',
+		403:'FORBIDDEN',
+		404:'NOT_FOUND',
+		405:'METHOD_NOT_ALLOWED',
+		406:'NOT_ACCEPTABLE',
+		407:'PROXY_AUTHENTICATION_REQUIRED',
+		408:'REQUEST_TIMEOUT',
+		409:'CONFLICT',
+		410:'GONE',
+		411:'LENGTH_REQUIRED',
+		412:'PRECONDITION_FAILED',
+		413:'REQUEST_ENTITY_TOO_LARGE',
+		414:'REQUEST_URI_TOO_LONG',
+		415:'UNSUPPORTED_MEDIA_TYPE',
+		416:'REQUEST_RANGE_NOT_SATISFIABLE',
+		417:'EXPECTATION_FAILED',
+		422:'UNPROCESSABLE_ENTITY',
+		423:'LOCKED',
+		424:'FAILED_DEPENDENCY',
+		426:'UPGRADE_REQUIRED',
+		428:'PRECONDITION_REQUIRED',
+		429:'TOO_MANY_REQUESTS',
+		431:'REQUEST_HEADER_FIELDS_TOO_LARGE',
+		500:'INTERNAL_SERVER_ERROR',
+		501:'NOT_IMPLEMENTED',
+		502:'BAD_GATEWAY',
+		503:'SERVICE_UNAVAILABLE',
+		504:'GATEWAY_TIMEOUT',
+		505:'HTTP_VERSION_NOT_SUPPORTED',
+		506:'VARIANT_ALSO_NEGOTIATES',
+		507:'INSUFFICIENT_STORAGE',
+		508:'LOOP_DETECTED',
+		510:'NOT_EXTENDED',
+		511:'NETWORK_AUTHENTICATION_REQUIRED'
+	}
+
+	def ResultSuccess(self): return self.code >= 200 and self.code < 300
+	def ResultRedirectionRequired(self): return self.code >= 300 and self.code < 400
+	def ResultClientError(self): return self.code >= 400 and self.code < 500
+	def ResultServerError(self): return self.code >= 500 and self.code < 600
+	def ResultUnauthorised(self): return self.code == 401
+	def ResultConnectFailed(self): return self.code == Http.HTTP_CONNECT_FAILED
+
+	def GetResponseMsg(self):
+		if self.code == 0: return 'No request has been made yet'
+		if self.code == Http.HTTP_CONNECT_FAILED: return 'Unable to connect to the specified server'
+		if self.code == 401: return 'The Request was unauthorised'
+		try:
+			codeMsg = '[%s:%s]' % (Http.HTTP_CODES[self.code], self.code)
+		except:
+			codeMsg = '[Unknown Code:%s]' % self.code
+		if self.ResultClientError(): return 'A client error occurred %s' % codeMsg
+		if self.ResultServerError(): return 'A server error occurred %s' % codeMsg
+		if self.ResultRedirectionRequired(): return 'A redirection is required %s' % codeMsg
+		if self.ResultSuccess(): return 'Success %s' % codeMsg 
+		return 'Unexpected response %s' % codeMsg
+
 	def __init__(self):
 		self.opener = urllib2.build_opener(urllib2.HTTPHandler)
 		self.headers = dict()
 		self.code = 0
+		self.url = ''
+		self.method = ''
 
 	def GetHttpResponseCode(self):
 		return self.code
 
-	def Get(self, url):
-		logDebug('GET %s' % url)
-		request = urllib2.Request(url)
+	def __request(self, method, url, data = ''):
+		logDebug('%s %s' % (method, url))
+		self.url = url
+		self.method = method
+		if data != '':
+			request = urllib2.Request(url, data)
+		else:
+			request = urllib2.Request(url)
+		request.get_method = lambda: method
 		for p in self.headers:
 			request.add_header(p, self.headers[p])
 		try:
 			resp = self.opener.open(request)
 			self.code = resp.code
-			logDebug('RESPONSE %s' % str(self.code))
+			logDebug(self.GetResponseMsg())
 			return resp.read()
 		except urllib2.HTTPError, e:
 			self.code = e.code
-			logDebug('RESPONSE %s' % str(self.code))
-			if e.code == 201:
-				return e.read()
+			logDebug(self.GetResponseMsg())
+			if self.ResultSuccess(): return e.read()
 			return None
 		except urllib2.URLError:
 			#Failed to access
-			self.code = -1
-			logDebug('RESPONSE %s' % str(self.code))
+			self.code = Http.HTTP_CONNECT_FAILED
+			logDebug(self.GetResponseMsg())
 			return None
+
+	def Get(self, url): return self.__request('GET', url)
+	def Put(self, url): return self.__request('PUT', url)
+	def Post(self, url, data = ''): return self.__request('POST', url, data)
+	def Delete(self, url): return self.__request('DELETE', url)
 
 	def Reset(self):
 		self.code = 0
 		self.headers.clear()
-
-	def Post(self, url, data):
-		logDebug('POST %s' % url)
-		request = urllib2.Request(url, data)
-		for p in self.headers:
-			request.add_header(p, self.headers[p])
-		request.get_method = lambda: 'POST'
-		try:
-			resp = self.opener.open(request)
-			self.code = resp.code
-			logDebug('RESPONSE %s' % str(self.code))
-			return resp.read()
-		except urllib2.HTTPError, e:
-			self.code = e.code
-			logDebug('RESPONSE %s' % str(self.code))
-			if e.code == 201:
-				return e.read()
-			return None
 
 	def SetHttpHeader(self, prop, value):
 		self.headers[prop] = value

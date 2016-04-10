@@ -377,11 +377,11 @@ class PlexeeDirectoryWindow(PlexeeWindow):
 		mc.ShowDialogWait()
 		try:
 			"""Get the item data and determine the action based on the content"""
-			data, url = server.getData(key)
+			data, url = self.plexee.plexInterface.getItemData(server, key)
 			if clickedItem.GetProperty('title1') == 'Search':
-				windowInformation = self.plexee.getListItems(server, data, url, clickedItem)
+				windowInformation = self.plexee.createListItems(server, data, url, clickedItem)
 			else:
-				windowInformation = self.plexee.getListItems(server, data, url)
+				windowInformation = self.plexee.createListItems(server, data, url)
 			if not windowInformation:
 				msg = "An unexpected error occurred. Unable to retrieve items."
 				util.logDebug(msg)
@@ -526,12 +526,13 @@ class PlexeePlaylistWindow(PlexeeDirectoryWindow):
 	
 	def getMyPlaylistItems(self):
 		libraryListItems = mc.ListItems()
-		myServers = self.plexee.plexManager.myServers
+		myServers = self.plexee.plexManager.getLocalServers()
 		hash = ""
 		for machineID in myServers:
 			server = myServers[machineID]
-			data, url = server.getPlaylistData()
-			windowInformation = self.plexee.getListItems(server, data, url, None)
+			if not server.isConnected: continue
+			data, url = self.plexee.plexInterface.getPlaylistData(server)
+			windowInformation = self.plexee.createListItems(server, data, url, None)
 			hash = hash + windowInformation.dataHash
 			for childListItem in windowInformation.childListItems:
 				childListItem.SetTitle(childListItem.GetProperty("title"))
@@ -573,6 +574,7 @@ class PlexeePlaylistWindow(PlexeeDirectoryWindow):
 			return
 		if key != "" and server:
 			self.plexee.plexManager.deletePlaylist(server, key)
+
 			if not internal:
 				self.onActivate()
 				self.getMenuList().SetFocus()
@@ -812,16 +814,19 @@ class PlexeeHomeWindow(PlexeeWindow):
 	
 	def loadContent(self):
 		util.logDebug("load content started")
-		self.myLibrary.SetItems(self.getMyLibraryItems())
-		self.sharedLibraries.SetItems(self.getSharedLibraryItems())
-		self.myChannels.SetItems(self.getMyChannelItems())
-		self.myRecentlyAdded.SetItems(self.getMyRecentlyAddedItems())
-		self.myOnDeck.SetItems(self.getMyOnDeckItems())
-		self.myQueueList.SetItems(self.getMyQueueItems())
+		try:
+			self.myLibrary.SetItems(self.getMyLibraryItems())
+			self.sharedLibraries.SetItems(self.getSharedLibraryItems())
+			self.myChannels.SetItems(self.getMyChannelItems())
+			self.myRecentlyAdded.SetItems(self.getMyRecentlyAddedItems())
+			self.myOnDeck.SetItems(self.getMyOnDeckItems())
+			self.myQueueList.SetItems(self.getMyQueueItems())
 		
-		lastSearch = self.plexee.config.getLastSearch()
-		if lastSearch and lastSearch != "":
-			self.searchList.SetItems(self.getSearchItems(lastSearch))
+			lastSearch = self.plexee.config.getLastSearch()
+			if lastSearch and lastSearch != "":
+				self.searchList.SetItems(self.getSearchItems(lastSearch))
+		except plex.PlexConnectionFailedError:
+			mc.ShowDialogConfirm('Connection lost!','A connection was lost to the Plex server. Try and connect again.','Ok')
 		
 		self.homeGroupList.SetFocus()
 
@@ -835,12 +840,13 @@ class PlexeeHomeWindow(PlexeeWindow):
 		"""
 		libraryListItems = mc.ListItems()
 		manager = self.plexee.plexManager
-		for machineID in manager.myServers:
-			server = manager.myServers[machineID]
-			data, url = server.getLibraryData()
-			windowInformation = self.plexee.getListItems(server, data, url)
-			if windowInformation is None: continue
-			for childListItem in windowInformation.childListItems: libraryListItems.append(childListItem)
+		localServers = manager.getLocalServers()
+		for key in localServers:
+			server = localServers[key]
+			if not server.isConnected: continue
+			data, url = self.plexee.plexInterface.getLibraryData(server)
+			for childListItem in self.plexee.createVideoListItems(server, data, url):
+				libraryListItems.append(childListItem)
 		return libraryListItems
 
 	def getSharedLibraryItems(self):
@@ -852,14 +858,14 @@ class PlexeeHomeWindow(PlexeeWindow):
 		Photos
 		"""
 		libraryListItems = mc.ListItems()
-		sharedServers = self.plexee.plexManager.sharedServers
-		for machineID in sharedServers:
-			server = sharedServers[machineID]
-			data, url = server.getLibraryData()
-			windowInformation = self.plexee.getListItems(server, data, url)
-			if windowInformation is None: continue
-			for childListItem in windowInformation.childListItems:
-				#App shared name
+		manager = self.plexee.plexManager
+		sharedServers = manager.getMyPlexRemoteServers()
+		for key in sharedServers:
+			server = sharedServers[key]
+			if not server.isConnected: continue
+			data, url = self.plexee.plexInterface.getLibraryData(server)
+			for childListItem in self.plexee.createVideoListItems(server, data, url):
+				#Add shared name
 				childListItem.SetProperty('title', server.remoteTitle + ' - ' + childListItem.GetProperty('title'))
 				libraryListItems.append(childListItem)
 		return libraryListItems
@@ -872,13 +878,14 @@ class PlexeeHomeWindow(PlexeeWindow):
 		TED
 		"""
 		libraryListItems = mc.ListItems()
-		myServers = self.plexee.plexManager.myServers
-		for machineID in myServers:
-			server = myServers[machineID]
-			data, url = server.getChannelData()
-			windowInformation = self.plexee.getListItems(server, data, url)
-			if windowInformation is None: continue
-			for childListItem in windowInformation.childListItems: libraryListItems.append(childListItem)
+		manager = self.plexee.plexManager
+		localServers = manager.getLocalServers()
+		for key in localServers:
+			server = localServers[key]
+			if not server.isConnected: continue
+			data, url = self.plexee.plexInterface.getChannelData(server)
+			for childListItem in self.plexee.createVideoListItems(server, data, url):
+				libraryListItems.append(childListItem)
 		return libraryListItems
 
 	def getMyRecentlyAddedItems(self):
@@ -886,13 +893,14 @@ class PlexeeHomeWindow(PlexeeWindow):
 		Get the recently added items for the local Plex servers
 		"""
 		libraryListItems = mc.ListItems()
-		myServers = self.plexee.plexManager.myServers
-		for machineID in myServers:
-			server = myServers[machineID]
-			data, url = server.getRecentlyAddedData()
-			windowInformation = self.plexee.getListItems(server, data, url)
-			if windowInformation is None: continue
-			for childListItem in windowInformation.childListItems: libraryListItems.append(childListItem)
+		manager = self.plexee.plexManager
+		localServers = manager.getLocalServers()
+		for key in localServers:
+			server = localServers[key]
+			if not server.isConnected: continue
+			data, url = self.plexee.plexInterface.getRecentlyAddedData(server)
+			for childListItem in self.plexee.createVideoListItems(server, data, url):
+				libraryListItems.append(childListItem)
 		return libraryListItems
 
 	def getMyOnDeckItems(self):
@@ -900,13 +908,14 @@ class PlexeeHomeWindow(PlexeeWindow):
 		Get the on deck items for the local Plex servers
 		"""
 		libraryListItems = mc.ListItems()
-		myServers = self.plexee.plexManager.myServers
-		for machineID in myServers:
-			server = myServers[machineID]
-			data, url = server.getOnDeckData()
-			windowInformation = self.plexee.getListItems(server, data, url)
-			if windowInformation is None: continue
-			for childListItem in windowInformation.childListItems: libraryListItems.append(childListItem)
+		manager = self.plexee.plexManager
+		localServers = manager.getLocalServers()
+		for key in localServers:
+			server = localServers[key]
+			if not server.isConnected: continue
+			data, url = self.plexee.plexInterface.getOnDeckData(server)
+			for childListItem in self.plexee.createVideoListItems(server, data, url):
+				libraryListItems.append(childListItem)
 		return libraryListItems
 
 	def getMyQueueItems(self):
@@ -914,8 +923,14 @@ class PlexeeHomeWindow(PlexeeWindow):
 		Get any MyPlex queue items
 		"""
 		libraryListItems = mc.ListItems()
-		childListItems = self.plexee._createQueueItems()
-		for childListItem in childListItems: libraryListItems.append(childListItem)
+		#TODO: Shift to MyPlex
+		try:
+			childListItems = self.plexee.createQueueItems()
+			for childListItem in childListItems: libraryListItems.append(childListItem)
+		except plex.PlexRequestError, e:
+			#A request failed for some reason
+			mc.ShowDialogConfirm('Unexpected Error','When retrieving queue items:\n%s' % e.msg,'Ok')
+
 		return libraryListItems
 			
 	def getSearchItems(self, query):
@@ -923,26 +938,30 @@ class PlexeeHomeWindow(PlexeeWindow):
 		Get items from the local Plex servers matching the query string
 		"""
 		libraryListItems = mc.ListItems()
-		
-		myServers = self.plexee.plexManager.myServers
-		for	machineID in myServers:
-			server = myServers[machineID]
-			searchData = False
-			searchUrl = False
-			if query.startswith('actor:'):
-				searchData, searchUrl = server.getSearchActorData(query.replace('actor:',''))
-			elif query.startswith('track:'):
-				searchData, searchUrl = server.getSearchTrackData(query.replace('track:',''))
-			else:
-				searchData, searchUrl = server.getSearchData(query)
+		manager = self.plexee.plexManager
+		localServers = manager.getLocalServers()
+		try:
+			for key in localServers:
+				server = localServers[key]
+				if not server.isConnected: continue
+				searchData = False
+				searchUrl = False
+				plexInterface = self.plexee.plexInterface
+				if query.startswith('actor:'):
+					searchData, searchUrl = plexInterface.getSearchActorData(server, query.replace('actor:',''))
+				elif query.startswith('track:'):
+					searchData, searchUrl = plexInterface.getSearchTrackData(server, query.replace('track:',''))
+				else:
+					searchData, searchUrl = plexInterface.getSearchData(server, query)
 				
-			windowInformation = self.plexee.getListItems(server, searchData, searchUrl)
-			if windowInformation is None: continue
-			for childListItem in windowInformation.childListItems:
-				#Only allow known types
-				if childListItem.GetProperty('itemtype') == 'Video' or childListItem.GetProperty('itemtype') == 'Track' or childListItem.GetProperty('itemtype') == 'Directory':
-					childListItem.SetProperty('title1', 'Search')
-					libraryListItems.append(childListItem)
+				for childListItem in self.plexee.createVideoListItems(server, searchData, searchUrl):
+					#Only allow known types
+					if childListItem.GetProperty('itemtype') == 'Video' or childListItem.GetProperty('itemtype') == 'Track' or childListItem.GetProperty('itemtype') == 'Directory':
+						childListItem.SetProperty('title1', 'Search')
+						libraryListItems.append(childListItem)
+		except plex.PlexRequestError, e:
+			#A request failed for some reason
+			mc.ShowDialogConfirm('Unexpected Error','When retrieving search items:\n%s' % e.msg,'Ok')
 		return libraryListItems
 	
 class PlexeePlayDialog(PlexeeDialog):
@@ -1031,7 +1050,8 @@ class PlexeeConnectionDialog(PlexeeDialog):
 	
 	def doInit(self):
 		window = self.window
-		self.errorLabel = window.GetLabel(300)
+		self.connectLabel = window.GetLabel(100)
+		self.errorLabel = window.GetLabel(100)
 		self.closeButton = window.GetButton(402)
 		self.nextErrorButton = window.GetControl(401)
 		self.initialised = True
@@ -1039,7 +1059,11 @@ class PlexeeConnectionDialog(PlexeeDialog):
 	def onLoad(self):
 		self.connectionErrors = []
 		self.connectionErrorPos = 0
+		self.connectLabel.SetLabel('Please wait - searching for servers....')
 		self.connect()
+
+	def __appendConnectMsg(self, msg):
+		self.connectLabel.SetLabel(self.connectLabel.GetLabel() + '[CR]' + msg)
 
 	def onUnload(self):
 		pass
@@ -1077,22 +1101,79 @@ class PlexeeConnectionDialog(PlexeeDialog):
 	def connect(self):
 		config = self.plexee.config
 		plexManager = self.plexee.plexManager
+		mc.ShowDialogWait()
 		try:
-			mc.ShowDialogWait()
+			userFailed = False
+			#MyPlex
+			self.plexee.plexManager.clearManualServers()
+
+			if config.isMyPlexConnectOn():
+				self.__appendConnectMsg('Logging into MyPlex....')
+				username = config.getMyPlexUser()
+				passsword = config.getMyPlexPassword()
+				if username and passsword:
+					tryOffline = not config.isSkipOfflineOn
+					if plexManager.myPlexLogin(username, passsword):
+						#Connected to MyPlex - Set user
+						localUser = config.getLocalUser()
+						if localUser != "":
+							data, url = plexManager.getLocalUsers()
+							localUsers = self.plexee.createUsers(data)
+							for user in localUsers:
+								if user['id'] == localUser:
+									self.__appendConnectMsg('-- Logging in as [B]%s[/B]' % user['name'])
+									result = self.plexee.getUserDialog().switchUser(user['id'], user['name'], user['protected'])
+									if result != plexManager.SUCCESS:
+										userFailed = True
+									if result == plexManager.ERR_USER_MYPLEX_OFFLINE:
+										self.addConnectionError("Failed to login as user [B]%s[/B], plex.tv is offline" % user['name'])
+									elif result == plexManager.ERR_USER_PIN_FAILED:
+										self.addConnectionError("Failed to login as user [B]%s[/B], invalid PIN" % user['name'])
+									elif result == plexManager.ERR_USER_OTHER:
+										self.addConnectionError("Failed to login as user [B]%s[/B], an unexpected error occurred" % user['name'])
+									elif result == plexManager.ERR_USER_NO_PIN:
+										self.addConnectionError("Failed to login as user [B]%s[/B], no PIN was entered" % user['name'])
+									break
+
+					result = plexManager.myPlexLoadServers()
+					if result != plexManager.SUCCESS:
+						self.__appendConnectMsg('-- An error occurred')
+					else:
+						servers = plexManager.getMyPlexServers()
+						tryOffline = not config.isSkipOfflineOn
+						connected = False
+						for key in servers:
+							server = servers[key]
+							status = 'ONLINE'
+							if not server.appearsOffline or tryOffline:
+								server.connect()
+							if not server.isConnected: status = 'OFFLINE'
+							else: connected = True
+							self.__appendConnectMsg('-- Found server [B]%s[/B] %s' % (server.friendlyName, status))
+
+					if result == plexManager.ERR_NO_MYPLEX_SERVERS:
+						self.addConnectionError("No registered MyPlex servers to connect to")
+					elif not connected:
+						self.addConnectionError("Unable to connect to any MyPlex registered servers.[CR][CR]Please check MyPlex for the server details and check connectivity.")
+					elif result == plexManager.ERR_MYPLEX_NOT_AUTHENTICATED:
+						self.addConnectionError("Failed to connect to MyPlex.[CR][CR]Authentication failed - check your username and password")
 
 			#try manual server
 			if config.isManualConnectOn():
+				self.__appendConnectMsg('Trying manual server....')
 				host = config.getManualHost()
 				port = str(config.getManualPort())
-				server = plexManager.addMyServer(host, port)
-				if server.isTokenRequired and not config.isMyPlexConnectOn():
-					self.addConnectionError("MANUAL connection failed to connect to plex server:[CR]"+host+":"+port+"[CR][CR]It requires an authenticated user. Please connect using MyPlex.")
-				elif not plexManager.myServers:
-					#Manual set but no server found
-					self.addConnectionError("MANUAL connection failed to connect to plex server:[CR]"+host+":"+port+"[CR][CR]Check the server IP and port is correct.")
+				server = plexManager.addManualServer(host, port)
+				if not server.isConnected:
+					if server.isTokenRequired and not config.isMyPlexConnectOn():
+						self.addConnectionError("MANUAL connection failed to connect to plex server:[CR]"+host+":"+port+"[CR][CR]It requires an authenticated user. Please connect using MyPlex.")
+					else:
+						#Manual set but no server found
+						self.addConnectionError("MANUAL connection failed to connect to plex server:[CR]"+host+":"+port+"[CR][CR]Check the server IP and port is correct.")
 
 			#try GDM auto discovery
 			if config.isAutoConnectOn():
+				self.__appendConnectMsg('Trying GDM....')
 				discoverTime = config.getDiscoveryTime()
 				serverList = PlexGDM().getServers(discoverTime);
 				if serverList:
@@ -1100,7 +1181,9 @@ class PlexeeConnectionDialog(PlexeeDialog):
 					for serverKey in serverList:
 						host = serverList[serverKey]['ip']
 						port = serverList[serverKey]['port']
-						server = plexManager.addMyServer(host, port)
+						self.__appendConnectMsg('-- Found server %s:%s' % (host, port))
+						server = plexManager.addManualServer(host, port)
+						server.connect()
 						if server.isTokenRequired and not config.isMyPlexConnectOn():
 							self.addConnectionError("GDM failed to connect to plex server:[CR]"+host+":"+port+"[CR][CR]It requires an authenticated user. Please connect using MyPlex.")
 
@@ -1113,36 +1196,19 @@ class PlexeeConnectionDialog(PlexeeDialog):
 						"[CR]3. Try increasing the GDM response time in the settings screen" + \
 						"[CR][CR]Otherwise use the Manual Server or MyPlex options in the settings screen.")
 
-			#try MyPlex
-			if config.isMyPlexConnectOn():
-				username = config.getMyPlexUser()
-				passsword = config.getMyPlexPassword()
-				if username and passsword:
-					result = plexManager.myPlexLogin(username, passsword)
-					if result == plexManager.ERR_NO_MYPLEX_SERVERS:
-						self.addConnectionError("No registered MyPlex servers to connect to")
-					elif result == plexManager.ERR_MPLEX_CONNECT_FAILED:
-						self.addConnectionError("Unable to connect to any MyPlex registered servers.[CR][CR]Please check MyPlex for the server details and check connectivity.")
-					elif result == plexManager.ERR_MYPLEX_NOT_AUTHENTICATED:
-						self.addConnectionError("Failed to connect to MyPlex.[CR][CR]Authentication failed - check your username and password")
-
-			if len(self.connectionErrors) > 0:
+			self.addConnectionError(self.connectLabel.GetLabel())
+			if len(self.connectionErrors) > 1:
 				#An Error Occurred
+				self.connectLabel.SetLabel('There was an error connecting.')
 				self.updateConnectionResult()
+				if not userFailed:
+					#Try and load anyway
+					self.plexee.getHomeWindow().loadContent()
 			else:
 				#No errors
+				self.plexee.getHomeWindow().loadContent()
 				self.close()
 			
-			#Set user
-			localUser = config.getLocalUser()
-			if localUser != "":
-				localUsers = plexManager.getLocalUsers()
-				if len(localUsers) > 1:
-					for l in localUsers:
-						if l['id'] == localUser:
-							plexManager.switchUser(l['token'],l['machineidentifier'])
-			
-			self.plexee.getHomeWindow().loadContent()
 		finally:
 			mc.HideDialogWait()
 
@@ -1162,14 +1228,27 @@ class PlexeeUserDialog(PlexeeDialog):
 
 	def onLoad(self):
 		self.message.SetVisible(True)
-		users = self.plexee.plexManager.getLocalUsers()
+		data, url = self.plexee.plexManager.getLocalUsers()
+		dataHash = util.hash(data)
+
+		windowInfo = self.plexee.cache.getItem(url, dataHash)
+		#If no change to data then exit
+		if windowInfo:
+			self.contentList.SetItems(windowInfo.childListItems)
+			self.message.SetVisible(False)
+			return
+		
+		#Otherwise create the users
+		users = self.plexee.createUsers(data)
 		if len(users) < 2:
-			self.message.SetLabel("There is no other user to switch to! (You can set these up on you Plex Server)")
+			self.message.SetLabel(
+				"There was no other user found on plex.tv to switch to!"+
+			    "[CR][CR]You can set these up on you Plex Server, and make sure your server is signed in."+
+				"[CR][CR]This allows you to restrict what content other users can see, and set a PIN for your primary user.")
 			self.message.SetVisible(True)
 			return
 		else:
 			self.message.SetVisible(False)
-		
 		listItems = mc.ListItems()
 		
 		for user in users:
@@ -1177,7 +1256,7 @@ class PlexeeUserDialog(PlexeeDialog):
 			li = mc.ListItem(mc.ListItem.MEDIA_UNKNOWN)
 			li.SetProperty("itemtype", "UserItem")
 			li.SetPath('1')
-			attribs = ['id','token','thumb','name','machineidentifier']
+			attribs = ['id','thumb','name','protected']
 			for attribute in attribs:
 				if user.has_key(attribute):
 					li.SetProperty(attribute.lower(), user[attribute])
@@ -1185,24 +1264,81 @@ class PlexeeUserDialog(PlexeeDialog):
 			listItems.append(li)
 			
 		self.contentList.SetItems(listItems)
-		
+		self.plexee.cache.addItem(url, WindowInformation(None, listItems, dataHash))
+
 	def onUnload(self):
 		pass
 
-	def userClicked(self):
-		clickedItem = mc.GetFocusedItem(self.getId(), 300)
-		util.logDebug("Name: %s" % clickedItem.GetProperty('name'))
-		machineID = clickedItem.GetProperty("machineidentifier")
-		self.plexee.plexManager.switchUser(clickedItem.GetProperty("token"), machineID)
-		
-		#TODO: change to a field that indicates prime user
-		if machineID != '0':
-			self.plexee.config.setLocalUser(clickedItem.GetProperty("id"))
+	def switchUser(self, userId, userTitle, protected):
+		config = self.plexee.config
+		plexManager = self.plexee.plexManager
+		result = plexManager.ERR_USER_NO_PIN
+		if protected == '0':
+			result = plexManager.switchUser(userId, '')
 		else:
-			self.plexee.config.setLocalUser("")
-		
-		self.close()
-		self.plexee.getHomeWindow().refresh()
+			pin = ''
+			useSettingsPin = False
+			pinEntered = False
+			if userTitle == config.getMyPlexUser():
+				pin = config.getMyPlexPIN()
+				if pin != '': useSettingsPin = True
+			while True:
+				if pin == '':
+					pin = mc.ShowDialogKeyboard("Enter PIN for user [B]%s[/B]" % userTitle, "", True)
+					pinEntered = True
+				if pin == '':
+					#User cancelled
+					break
+				result = plexManager.switchUser(userId, pin)
+				if result == plexManager.SUCCESS:
+					if useSettingsPin and pinEntered:
+						util.logInfo('Updating PIN in settings')
+						config.setMyPlexPIN(pin)
+					break
+				elif result == plexManager.ERR_USER_PIN_FAILED:
+					#PIN Invalid
+					if useSettingsPin:
+						mc.ShowDialogOk("PIN Invalid",'Your PIN in the Plexee Settings was incorrect.[CR][CR]Enter the correct PIN')
+						pin = ''
+					else:
+						mc.ShowDialogOk("PIN Invalid",'Please retry')
+				else:
+					break
+		return result
+
+	def userClicked(self):
+		mc.ShowDialogWait()
+		try:
+			plexManager = self.plexee.plexManager
+			config = self.plexee.config
+			clickedItem = mc.GetFocusedItem(self.getId(), 300)
+			util.logDebug("Name: %s" % clickedItem.GetProperty('name'))
+			#If protected request a PIN
+			pin = ''
+			userId = clickedItem.GetProperty("id")
+			userTitle = clickedItem.GetProperty("name")
+			protected = clickedItem.GetProperty('protected')
+			result = self.switchUser(userId, userTitle, protected)
+			if result == plexManager.SUCCESS:
+				config.setLocalUser(userId)
+				
+				#Connect servers
+				tryOffline = not config.isSkipOfflineOn
+				servers = plexManager.getMyPlexServers()
+				for key in servers:
+					server = servers[key]
+					if not server.appearsOffline or tryOffline:
+						server.connect()
+
+				self.close()
+				self.plexee.getHomeWindow().refresh()
+			else:
+				#Some error occurred
+				mc.ShowDialogOk("ERROR Switching","An unexpected error occurred trying to switch users")
+
+		finally:
+			mc.HideDialogWait()
+
 
 ##
 #The dialog object for the for Settings Dialog screen
@@ -1236,6 +1372,8 @@ class PlexeeSettingsDialog(PlexeeDialog):
 		self.myPlex = window.GetToggleButton(105)
 		self.myPlexUsername = window.GetEdit(106)
 		self.myPlexPassword = window.GetEdit(107)
+		self.myPlexSkipOffline = window.GetToggleButton(110)
+		self.myPlexPIN = window.GetEdit(111)
 		#Photo Settings
 		self.photoSettingsButton = window.GetButton(43)
 		self.slideShowZoom = window.GetToggleButton(300)
@@ -1335,6 +1473,8 @@ class PlexeeSettingsDialog(PlexeeDialog):
 		if config.isMyPlexConnectOn(): self.myPlex.SetSelected(True)
 		self.myPlexUsername.SetText(config.getMyPlexUser())
 		self.myPlexPassword.SetText(config.getMyPlexPassword())
+		self.myPlexPIN.SetText(config.getMyPlexPIN())
+		if config.isSkipOfflineOn(): self.myPlexSkipOffline.SetSelected(True)
 
 	def saveConnectSettings(self):
 		config = self.plexee.config
@@ -1375,6 +1515,11 @@ class PlexeeSettingsDialog(PlexeeDialog):
 		
 		config.setMyPlexUser(self.myPlexUsername.GetText())
 		config.setMyPlexPassword(self.myPlexPassword.GetText())
+		config.setMyPlexPIN(self.myPlexPIN.GetText())
+		if self.myPlexSkipOffline.IsSelected():
+			config.setSkipOfflineOn()
+		else:
+			config.setSkipOfflineOn()
 		self.connectOnClose = True
 		mc.ShowDialogNotification("Saved")
 
@@ -1499,8 +1644,13 @@ class PlexeeConfig(object):
 	def setMyPlexUser(self, val): self.config.SetValue("myplexusername",val)
 	def getMyPlexPassword(self): return self.config.GetValue("myplexpassword")
 	def setMyPlexPassword(self, val): self.config.SetValue("myplexpassword",val)
+	def getMyPlexPIN(self): return self.config.GetValue("myplexpin")
+	def setMyPlexPIN(self, val): self.config.SetValue("myplexpin",val)
 	def getLastSearch(self): return self.config.GetValue("lastsearch")
 	def setLastSearch(self, val): self.config.SetValue("lastsearch",val)
+	def isSkipOfflineOn(self): return self._isFlagSet("skipoffline")
+	def setSkipOfflineOn(self):	self._setFlag("skipoffline", True)
+	def setSkipOfflineOff(self):	self._setFlag("skipoffline", False)
 
 	"""Experience Settings"""
 	def isPlayThemesOn(self): return self._isFlagSet("playthemes", True)
@@ -1519,8 +1669,12 @@ class PlexeeConfig(object):
 	
 	"""Advanced Settings"""
 	def isDebugOn(self): return self._isFlagSet("debug")
-	def setDebugOn(self):	self._setFlag("debug", True)
-	def setDebugOff(self):	self._setFlag("debug", False)
+	def setDebugOn(self):
+		self._setFlag("debug", True)
+		util.Constants.IS_DEBUG = 1
+	def setDebugOff(self):
+		self._setFlag("debug", False)
+		util.Constants.IS_DEBUG = 0
 	def isEnableCacheOn(self): return self._isFlagSet("enablecache", True)
 	def setEnableCacheOn(self):	self._setFlag("enablecache", True)
 	def setEnableCacheOff(self):	self._setFlag("enablecache", False)
@@ -1561,7 +1715,7 @@ class PlexeePlayer(object):
 			self.stopTheme()
 			return
 		machineIdentifier = item.GetProperty("machineidentifier")
-		url = server.getUrl(themeKey)
+		url = self.plexee.plexInterface.getUrl(server, themeKey)
 		li = mc.ListItem(mc.ListItem.MEDIA_AUDIO_MUSIC)
 		li.SetPath(url)
 		li.SetTitle(title)
@@ -1675,7 +1829,97 @@ class PlexeePlayer(object):
 			xbmc.Player().stop()
 		else:
 			util.logDebug("Timed out waiting on Player to start - progress updating may not work...")	
+
+##
+#All calls to Plex from Plexee pass via this interface
+#Allows common error handling and quick view of Plex calls
+#
+class PlexInterface(object):
+	#Server
+	LIBRARY_DATA=1
+	CHANNEL_DATA=2
+	ONDECK_DATA=3
+	RECENT_DATA=4
+	PLAYLIST_DATA=5
+	ITEM_DATA=6
+	SEARCH_ACTOR_DATA=7
+	SEARCH_TRACK_DATA=8
+	SEARCH_DATA = 9
+	SECTION_DATA = 10
+	#MyPlex
+	QUEUE_DATA=20
+	USER_DATA=21
+	QUEUELINK_DATA=22
+
+	def __init__(self, plexee):
+		self.plexee = plexee
+
+	def __getMyPlexData(self, type, myPlex, key=None):
+		try:
+			#Return data, url
+			if type == PlexInterface.QUEUE_DATA: return myPlex.getQueueData()
+			elif type == PlexInterface.USER_DATA: return myPlex.getMultiUserData()
+			elif type == PlexInterface.QUEUELINK_DATA: return myPlex.getQueueLinkData(key)
+		except plex.PlexConnectionFailedError:
+			mc.ShowDialogNotification('Connection Lost!: The connection was lost to the Plex server. Please reconnect.')
+			return None, ''
+		except plex.PlexRequestError, e:
+			#A request failed for some reason
+			#mc.ShowDialogConfirm('Unexpected Error','When retrieving items from Plex:\n%s' % e.msg,'Ok')
+			if e.httpCode == 401:
+				#Not authorised to access
+				pass
+			else:
+				mc.ShowDialogNotification('Unexpected Error: When retrieving items from Plex:\n%s' % e.msg)
+			return None, ''
+
+	def getMyPlexQueueData(self, myplex): return self.__getMyPlexData(PlexInterface.QUEUE_DATA, myplex)
+	def getMyPlexUserData(self, myplex): return self.__getMyPlexData(PlexInterface.USER_DATA, myplex)
+	def getMyPlexQueueLinkData(self, myplex, key): return self.__getMyPlexData(PlexInterface.QUEUELINK_DATA, myplex, key)
+
+	def __getServerData(self, type, server, key=None):
+		try:
+
+			#Return data, url
+			if type == PlexInterface.CHANNEL_DATA: return server.getChannelData()
+			elif type == PlexInterface.LIBRARY_DATA: return server.getLibraryData()
+			elif type == PlexInterface.ONDECK_DATA: return server.getOnDeckData()
+			elif type == PlexInterface.RECENT_DATA: return server.getRecentlyAddedData()
+			elif type == PlexInterface.PLAYLIST_DATA: return server.getPlaylistData()
+			elif type == PlexInterface.ITEM_DATA: return server.getData(key)
+			elif type == PlexInterface.SEARCH_DATA: return server.getSearchData(key)
+			elif type == PlexInterface.SEARCH_ACTOR_DATA: return server.getSearchActorData(key)
+			elif type == PlexInterface.SEARCH_TRACK_DATA: return server.getSearchTrackData(key)
+			elif type == PlexInterface.SECTION_DATA: return server.getSectionData(key)
+
+		except plex.PlexConnectionFailedError:
+			mc.ShowDialogNotification('Connection Lost!: The connection was lost to the Plex server. Please reconnect.')
+			return None, ''
+
+		except plex.PlexRequestError, e:
+			#A request failed for some reason
+			#mc.ShowDialogConfirm('Unexpected Error','When retrieving items from Plex:\n%s' % e.msg,'Ok')
+			if e.httpCode == 401:
+				#Not authorised to access
+				pass
+			else:
+				mc.ShowDialogNotification('Unexpected Error: When retrieving items from Plex:\n%s' % e.msg)
+			return None, ''
+
+	def getLibraryData(self, server): return self.__getServerData(PlexInterface.LIBRARY_DATA, server)
+	def getChannelData(self, server): return self.__getServerData(PlexInterface.CHANNEL_DATA, server)
+	def getOnDeckData(self, server): return self.__getServerData(PlexInterface.ONDECK_DATA, server)
+	def getRecentlyAddedData(self, server): return self.__getServerData(PlexInterface.RECENT_DATA, server)
+	def getPlaylistData(self, server): return self.__getServerData(PlexInterface.PLAYLIST_DATA, server)
+	def getItemData(self, server, key): return self.__getServerData(PlexInterface.ITEM_DATA, server, key)
+	def getSectionData(self, server, key): return self.__getServerData(PlexInterface.SECTION_DATA, server, key)
+	def getSearchData(self, server, key): return self.__getServerData(PlexInterface.SEARCH_DATA, server, key)
+	def getSearchActorData(self, server, key): return self.__getServerData(PlexInterface.SEARCH_ACTOR_DATA, server, key)
+	def getSearchTrackData(self, server, key): return self.__getServerData(PlexInterface.SEARCH_TRACK_DATA, server, key)
 	
+	def getUrl(self, server, key): return server.getUrl(key)
+	def getThumbUrl(self, server, key, width, height): return server.getThumbUrl(key, width, height)
+
 ##
 #The core of the Plexee application
 #	
@@ -1721,7 +1965,8 @@ class Plexee(object):
 	
 	def __init__(self):
 		try:
-			deviceId = mc.GetDeviceId()
+			#deviceId = mc.GetDeviceId()
+			deviceId = 'fred'
 		except:
 			deviceId = str(uuid.getnode())
 
@@ -1735,6 +1980,7 @@ class Plexee(object):
 			'deviceid':deviceId
 		})
 		self.config = PlexeeConfig()
+		self.plexInterface = PlexInterface(self)
 		self._windows = dict()
 		self.player = PlexeePlayer(self)
 		self.cache = PlexeeCache(self)
@@ -1831,7 +2077,8 @@ class Plexee(object):
 		li.SetPath(listItem.GetPath())
 
 		#Get video detail from plex
-		data = mc.Http().Get(listItem.GetPath())
+		#data = util.Http().Get(listItem.GetPath())
+		data, url = self.plexInterface.getItemData(server, listItem.GetPath())
 		if not data:
 			return listItem
 		
@@ -1919,7 +2166,7 @@ class Plexee(object):
 	
 	def _createItunesTrackItem(self, server, element, sourceUrl):
 		listItem = self._createBaseItunesItem(server, element, sourceUrl)
-		listItem.SetProperty("title", util.cleanString(element.attrib["track"]))
+		listItem.SetProperty("title", util.cleanString(element.attrib["title"]))
 		duration = ""
 		if element.attrib.has_key("totalTime") and element.attrib["totalTime"].isdigit():
 			#Format millisecond duration
@@ -1931,6 +2178,7 @@ class Plexee(object):
 		"""
 		Create list items from the Plex server and URL to display
 		"""
+		"""
 		isItunesPlugin = ("/music/itunes" in sourceUrl.lower())
 		if isItunesPlugin:
 			if element.tag == "Artist":
@@ -1939,7 +2187,7 @@ class Plexee(object):
 				return self._createItunesAlbumItem(server, element, sourceUrl)
 			elif element.tag == "Track":
 				return self._createItunesTrackItem(server, element, sourceUrl)
-			
+		"""	
 		# Important Properties
 		listItem = mc.ListItem(mc.ListItem.MEDIA_UNKNOWN)
 		listItem.SetProperty("itemtype", element.tag)
@@ -1962,7 +2210,7 @@ class Plexee(object):
 			epTitle = util.formatEpisodeTitle(season="", episode=listItem.GetProperty('index'), title=listItem.GetProperty('title'))
 			listItem.SetProperty("title",epTitle)
 			#is it watched?
-			data, u = server.getData(listItem.GetProperty("key"))
+			data, u = self.plexInterface.getItemData(server, listItem.GetProperty("key"))
 			if data:
 				vals = ElementTree.fromstring(data)[0]
 				if not vals.attrib.has_key("viewCount"):
@@ -1990,11 +2238,11 @@ class Plexee(object):
 			
 		return listItem
 
-	def _createQueueItems(self):
+	def createQueueItems(self):
 		"""
 		Create Queue items from MyPlex
 		"""
-		data = self._myplex().getQueueData()
+		data, url = self.plexInterface.getMyPlexQueueData(self.plexManager.myplex)
 		if not data:
 			return mc.ListItems()
 		tree = ElementTree.fromstring(data)
@@ -2006,14 +2254,7 @@ class Plexee(object):
 			attribs = ['machineidentifier','viewGroup','summary','id','title','key','thumb','type','title1','title2','size','index','search','secondary','parentKey','art']
 			for attribute in attribs:
 				if child.attrib.has_key(attribute):
-					#util.logDebug('Property [%s]=[%s]' % (attribute.lower(), util.cleanString(element.attrib[attribute])))
 					listItem.SetProperty(attribute.lower(), util.cleanString(child.attrib[attribute]))
-			# Image paths
-			# if child.attrib.has_key("thumb"):
-				# listItem.SetImage(0, listItem.GetProperty("thumb"))
-			# elif child.attrib.has_key("art"):
-				# listItem.SetImage(0, listItem.GetProperty("art"))
-				
 				
 			childListItems.append(listItem)
 
@@ -2023,13 +2264,37 @@ class Plexee(object):
 		data = ""
 		url = ""
 		if type == Plexee.MENU_SECTIONS:
-			data, url = server.getSectionData(key)
+			data, url = self.plexInterface.getSectionData(server, key)
 		elif type == Plexee.MENU_DIRECT:
-			data, url = server.getData(key)
+			data, url = self.plexInterface.getItemData(server, key)
 		util.logDebug("Updating menu using data from url "+url)
-		return self.getListItems(server, data, url).childListItems
+		return self.createListItems(server, data, url).childListItems
 
-	def getListItems(self, server, data, sourceUrl, titleListItem = None, additionalAttributes = []):
+	def createVideoListItems(self, server, data, sourceUrl):
+		"""
+		Create items to display from a Plex server
+		"""
+		if not data: return mc.ListItems()
+
+		dataHash = util.hash(data)
+		windowInformation = self.cache.getItem(sourceUrl, dataHash)
+		if windowInformation:
+			return windowInformation.childListItems
+
+		titleListItem = mc.ListItem(mc.ListItem.MEDIA_UNKNOWN)
+		titleListItem.SetProperty("hash", dataHash)
+		
+		tree = ElementTree.fromstring(data)
+		childListItems = mc.ListItems()
+		for child in tree:
+			childListItem = self._createListItem(server, child, sourceUrl)
+			childListItems.append(childListItem)
+		
+		windowInformation = WindowInformation(titleListItem, childListItems, dataHash)
+		self.cache.addItem(sourceUrl, windowInformation)
+		return childListItems
+
+	def createListItems(self, server, data, sourceUrl, titleListItem = None, additionalAttributes = []):
 		"""
 		Create items to display from a Plex server
 		"""
@@ -2086,7 +2351,7 @@ class Plexee(object):
 		audioItems = mc.ListItems()
 		mediaItems = mc.ListItems()
 		
-		data = self._myplex().getQueueData()
+		data, url = self.plexInterface.getMyPlexQueueData(self.plexManager.myplex)
 		if not data:
 			return MediaOptions(mediaItems, subtitleItems, audioItems)
 		
@@ -2181,7 +2446,7 @@ class Plexee(object):
 		audioItems = mc.ListItems()
 		mediaItems = mc.ListItems()
 		
-		data, url = server.getData(key)
+		data, url = self.plexInterface.getItemData(server, key)
 		if data:
 			tree = ElementTree.fromstring(data)
 			videoNode = tree[0]
@@ -2217,7 +2482,7 @@ class Plexee(object):
 					subItem.SetProperty('id',id)
 					source = "File"
 					if path != "":
-						subItem.SetPath(server.getUrl(path))
+						subItem.SetPath(self.plexInterface.getUrl(server, path))
 					else:
 						#Jinxo: Only default supported at the moment, as I haven't been able to switch to another....
 						source = "Embedded"
@@ -2254,7 +2519,7 @@ class Plexee(object):
 		"""
 		Create user items from MyPlex
 		"""
-		data = self._myplex().getMultiUserData()
+		data = self.plexInterface.getMyPlexUserData(self.plexManager.myplex)
 		if not data:
 			return mc.ListItems()
 		tree = ElementTree.fromstring(data)
@@ -2285,12 +2550,19 @@ class Plexee(object):
 		Update the played progress every 5 seconds while the player is playing
 		"""
 		server = args['server']
-		key = args['key']
+		videoNode = args['video']
+		
+		ratingKey = videoNode.attrib['ratingKey']
+		key = videoNode.attrib['key']
+		
 		offset = args['offset']
 		subtitleKey = args['subtitleKey']
 		totalTimeSecs = args['totalTimeSecs']
 		isDirectStream = args['isDirectStream']
 		
+		#Let Plex know we're playing this, and get an id to update progress with
+		#queueId = server.getPlayQueueId(videoNode)
+
 		if offset != 0:
 			util.logDebug("Seeking to resume position: "+str(offset))
 			xbmc.Player().seekTime(offset)
@@ -2324,14 +2596,14 @@ class Plexee(object):
 				if offset == 0:
 					#Clear it, likely start from beginning clicked
 					offset = 1
-					server.setMediaWatched(key)
+					server.setMediaWatched(ratingKey)
 				util.logDebug("-->Updating played duration to "+str(currentTimeSecs*1000))
-				server.setMediaPlayedPosition(key, currentTimeSecs*1000)
+				server.setMediaPlayedPosition(videoNode, queueId, currentTimeSecs*1000)
 
 			#Otherwise, mark as watched
 			elif progress >= 95:
 				if not isWatched:
-					server.setMediaWatched(key)
+					server.setMediaWatched(ratingKey)
 					isWatched = True
 					
 			xbmc.sleep(5000)
@@ -2342,8 +2614,8 @@ class Plexee(object):
 	def playQueueItem(self, server, queueItem,  mediaIndex, subtitleIndex, audioIndex, offset=0):
 		if offset != 0:
 			offset = offset/1000
-		
 		videoNode = ElementTree.fromstring(queueItem.GetProperty("videoNode"))
+		
 		description = util.cleanString(videoNode.attrib.get("summary",""))
 		title = util.cleanString(videoNode.attrib.get("title", "Plex Video"))
 		contentRating = util.cleanString(videoNode.attrib.get("contentRating",""))
@@ -2365,7 +2637,7 @@ class Plexee(object):
 			li.SetLabel(title)
 			
 			#Plex part links to actual part
-			data = self._myplex().getQueueLinkData(part.attrib.get("key"))
+			data, url = self.plexInterface.getMyPlexQueueLinkData(self.plexManager.myplex, part.attrib.get("key"))
 			if not data:
 				util.logError("Unable to retrieve media details to play using url: "+plexLinkToMedia)
 				continue
@@ -2393,19 +2665,21 @@ class Plexee(object):
 			for s in mediaNode.findall("Part/Stream"):
 				if s.attrib.get("id") != str(subtitleIndex):
 					continue;
-				subtitleKey = server.getUrl(s.attrib.get("key"))
+				subtitleKey = self.plexInterface.getUrl(server, s.attrib.get("key"))
 			
 		if subtitleKey == "":
 			subtitleKey = os.path.join(mc.GetApp().GetAppMediaDir(), 'media', 'no_subs.srt')
-		key = videoNode.attrib.get('ratingKey')
 		args = dict()
 		args['server'] = server
-		args['key'] = key
+		args['video'] = videoNode
 		args['offset'] = offset
 		args['subtitleKey'] = subtitleKey
 		args['totalTimeSecs'] = totalTimeSecs
 		args['isDirectStream'] = False
-		self.player.playVideoList(onPlay=self.monitorPlayback,args=args)
+		if not server is None:
+			self.player.playVideoList(onPlay=self.monitorPlayback,args=args)
+		else:
+			self.player.playVideoList(args=args)
 	
 	def queueVideoItem(self, server, item):
 		self.playVideoItem(server, item, 0, 0, 0, 0, True)
@@ -2415,7 +2689,7 @@ class Plexee(object):
 		Play the video item
 		"""
 		util.logDebug("Play video item")
-		data, url = server.getData(playItem.GetPath())
+		data, url = self.plexInterface.getItemData(server, playItem.GetPath())
 		if not data:
 			return None
 		
@@ -2425,10 +2699,12 @@ class Plexee(object):
 
 		tree = ElementTree.fromstring(data)
 		videoNode = tree[0]
+		videoNode.attrib['librarySectionUUID'] = tree.attrib['librarySectionUUID']
+		print(data)
 		if not queueOnly:
 			self.player.clearVideoList()
 
-		thumbnailUrl = server.getThumbUrl(videoNode.attrib.get("thumb"), 100, 100)
+		thumbnailUrl = self.plexInterface.getThumbUrl(server, videoNode.attrib.get("thumb"), 100, 100)
 		description = util.cleanString(videoNode.attrib.get("summary",""))
 		title = util.cleanString(videoNode.attrib.get("title", "Plex Video"))
 		contentRating = util.cleanString(videoNode.attrib.get("contentRating",""))
@@ -2452,8 +2728,8 @@ class Plexee(object):
 			
 			#Plex part links to actual part
 			if playItem.GetProperty('type') == 'clip':
-				plexLinkToMedia = server.getUrl(part.attrib.get("key"))
-				data = mc.Http().Get(plexLinkToMedia)
+				plexLinkToMedia = self.plexInterface.getUrl(server, part.attrib.get("key"))
+				data = util.Http().Get(plexLinkToMedia)
 				if not data:
 					util.logError("Unable to retrieve media details to play using url: "+plexLinkToMedia)
 					continue
@@ -2471,7 +2747,7 @@ class Plexee(object):
 					li.SetContentType('application/vnd.apple.mpegurl')
 					isDirectStream = True
 				else:
-					li.SetPath(server.getUrl(part.attrib.get("key")))
+					li.SetPath(self.plexInterface.getUrl(server, part.attrib.get("key")))
 			li.SetThumbnail(thumbnailUrl)
 			li.SetDescription(description, False)
 			li.SetContentRating(contentRating)
@@ -2493,16 +2769,14 @@ class Plexee(object):
 				for s in mediaNode.findall("Part/Stream"):
 					if s.attrib.get("id") != str(subtitleIndex):
 						continue;
-					subtitleKey = server.getUrl(s.attrib.get("key"))
+					subtitleKey = self.plexInterface.getUrl(server, s.attrib.get("key"))
 				
 			if subtitleKey == "":
 				subtitleKey = os.path.join(mc.GetApp().GetAppMediaDir(), 'media', 'no_subs.srt')
-		key = videoNode.attrib.get('ratingKey')
-
 		if not queueOnly:
 			args = dict()
 			args['server'] = server
-			args['key'] = key
+			args['video'] = videoNode
 			args['offset'] = offset
 			args['subtitleKey'] = subtitleKey
 			args['totalTimeSecs'] = totalTimeSecs
@@ -2511,6 +2785,22 @@ class Plexee(object):
 			self.player.playVideoList(onPlay=self.monitorPlayback,args=args)
 		else:
 			return
+
+	def createUsers(self, data):
+		result = []
+		if data is None: return result
+
+		tree = ElementTree.fromstring(data)
+		users = []
+		#Add current user
+		for child in tree:
+			user = dict()
+			user['name'] = child.attrib.get("title","")
+			user['id'] = child.attrib.get("id","")
+			user['thumb'] = child.attrib.get("thumb","")
+			user['protected'] = child.attrib.get("protected","")
+			users.append(user)
+		return users
 
 	def createAndAddMusicItem(self, items, listItem):
 		url = listItem.GetPath()
@@ -2567,7 +2857,7 @@ class Plexee(object):
 				li.SetProperty('key', listItem.GetProperty('key'))
 				li.SetProperty('machineidentifier', listItem.GetProperty('machineidentifier'))
 				li.SetLabel(title)
-				li.SetPath(server.getUrl(part.attrib.get('key')))
+				li.SetPath(self.plexInterface.getUrl(server, part.attrib.get('key')))
 				items.append(li)
 	
 	def getPhotoList(self, listItem):
@@ -2575,7 +2865,8 @@ class Plexee(object):
 		Return a list of all photo items
 		"""
 		server = self.getItemServer(listItem)
-		data, url = server.getData(listItem.GetProperty('parentKey')+'/children')
+		key = listItem.GetProperty('parentKey')+'/children'
+		data, url = self.plexInterface.getItemData(server, key)
 		if not data:
 			return None
 
@@ -2590,11 +2881,11 @@ class Plexee(object):
 				li.SetProperty('key',key)
 				li.SetTitle(title)
 				li.SetLabel(title)
-				li.SetPath(server.getUrl(key))
+				li.SetPath(self.plexInterface.getUrl(server, key))
 				li.SetProperty('rotation','')
 				li.SetProperty('zoom','')
 				#Resize images
-				li.SetImage(0, server.getThumbUrl(part.attrib.get('key'),1280,1280))
+				li.SetImage(0, self.plexInterface.getThumbUrl(server, part.attrib.get('key'),1280,1280))
 				#li.SetImage(0, self.getUrl(part.attrib.get('key')))
 				list.append(li)
 
@@ -2667,9 +2958,9 @@ class Plexee(object):
 			#Clicked on Movie etc.. from home menu
 			#Grab the menu items - and go to the first one
 			url = menuItems[0].GetPath()
-			data, url = server.getData(url)
+			data, url = self.plexInterface.getItemData(server, url)
 			directoryWindow = self.getDirectoryWindow()
-			windowInformation = self.getListItems(server, data, url)
+			windowInformation = self.createListItems(server, data, url)
 			directoryWindow.activate(clickedItem, server)
 			directoryWindow.updateMenuItems(menuItems)
 			directoryWindow.updateContentItems(windowInformation)
@@ -2686,15 +2977,14 @@ class Plexee(object):
 		art = listItem.GetProperty("art")
 		if art:
 			util.logDebug("Art: "+art)
-			return server.getThumbUrl(art, self.ART_WIDTH, self.ART_HEIGHT)
+			return self.plexInterface.getThumbUrl(server, art, self.ART_WIDTH, self.ART_HEIGHT)
 		else:
 			return False
 		
 	def _getThumbUrl(self, server, listItem, property="thumb"):
 		key = listItem.GetProperty(property)
 		if key:
-			util.logDebug("Thumb: " + key)
-			return server.getThumbUrl(key, self.THUMB_WIDTH, self.THUMB_HEIGHT)
+			return self.plexInterface.getThumbUrl(server, key, self.THUMB_WIDTH, self.THUMB_HEIGHT)
 		else:
 			return False
 
@@ -2717,11 +3007,12 @@ class Plexee(object):
 			server = self.getItemServer(clickedItem)
 
 			"""Get the item data and determine the action based on the content"""
-			data, url = server.getData(key)
+			data, url = self.plexInterface.getItemData(server, key)
+
 			if clickedItem.GetProperty('title1') == 'Search':
-				windowInformation = self.getListItems(server, data, url, clickedItem)
+				windowInformation = self.createListItems(server, data, url, clickedItem)
 			else:
-				windowInformation = self.getListItems(server, data, url)
+				windowInformation = self.createListItems(server, data, url)
 			if not windowInformation:
 				msg = "An unexpected error occurred. Unable to retrieve items."
 				util.logDebug(msg)
