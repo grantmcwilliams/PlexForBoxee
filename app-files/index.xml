@@ -2,8 +2,8 @@
    <app>
       <id>plexee.plexforboxee</id>
       <name>Plexee</name>
-      <version>1.12</version>
-      <description>Plex Media Server client application for Boxee (v. 1.12)</description>
+      <version>1.13</version>
+      <description>Plex Media Server client application for Boxee (v. 1.13)</description>
       <thumb>http://www.grantmcwilliams.com/plexforboxee/thumb.png</thumb>
       <repositoryid>com.grantmcwilliams</repositoryid>
       <repository>http://www.grantmcwilliams.com/plexforboxee</repository>
